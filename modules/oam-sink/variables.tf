@@ -14,8 +14,8 @@ variable "settings" {
 
 variable "dashboard_settings" {
   description = "Dashboard Settings"
-  type    = any
-  default = null
+  type        = any
+  default     = null
 }
 
 variable "resource_tags" {
