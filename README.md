@@ -52,7 +52,7 @@ Once deployed, the monitoring account can view **Log Groups**, **Metrics** and *
 * **Multi-region deployment** - Sink and link resources are deployed to a configurable primary region plus any number of secondary regions.
 * **OAM Sink with IAM policy** - Creates an OAM sink in the monitoring account with a sink policy that authorises specific member accounts to share `CloudWatch::Metric`, `Logs::LogGroup` and `XRay::Trace` resources.
 * **OAM Link with filtering** - Creates OAM links in each member account. Supports optional `log_group_filter` and `metric_filter` to control which telemetry is shared.
-* **CloudWatch Dashboard** - Automatically provisions a cross-account Lambda overview dashboard (Invocations & Errors) in the monitoring account.
+* **CloudWatch Dashboard** - Automatically provisions a cross-account Lambda overview dashboard (Invocations & Errors) in the monitoring account. Supply `dashboard_settings` to replace the default widgets with a fully custom dashboard layout.
 * **Lambda Layer provisioning** *(optional)* - Deploys a standardised ACAI Powertools Lambda layer across all regions with SSM parameter publication for easy layer discovery.
 * **Logging Factory** - The layer ships with a built-in `logging_factory` module that wraps AWS Lambda Powertools into a single `setup_logging()` call, giving every Lambda a consistent, structured JSON log format out of the box.
 * **Resource tagging** - All resources are tagged with module metadata (`acf_module_provider`, `acf_module_name`, `acf_sub_module_name`, `acf_module_source`) and support custom tags via `resource_tags`.
@@ -82,6 +82,7 @@ Deployed in the **monitoring account**. Creates:
 | `settings.aws_regions.secondary` | List of secondary AWS regions | `list(string)` | yes |
 | `settings.oam.sink_name` | Name for the OAM sink resources | `string` | yes |
 | `settings.oam.trusted_account_ids` | Account IDs allowed to link to this sink | `list(string)` | yes |
+| `dashboard_settings` | Custom CloudWatch dashboard body. When `null` (default), a Lambda Invocations & Errors dashboard is created automatically | `any` | no |
 | `resource_tags` | Custom tags to merge onto all resources | `map(string)` | no |
 
 #### Outputs
@@ -171,6 +172,10 @@ module "oam_sink" {
       trusted_account_ids = ["111111111111", "222222222222"]
     }
   }
+
+  # Optional: supply a custom dashboard layout.
+  # When omitted (null), a default Lambda Invocations & Errors dashboard is created.
+  # dashboard_settings = { widgets = [ ... ] }
 
   resource_tags = {
     environment = "production"
