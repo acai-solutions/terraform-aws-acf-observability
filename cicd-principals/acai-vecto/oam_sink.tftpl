@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "IAM Role used to provision OAM Sink (Observability) Resources"
+
+Resources:
+  OamSinkProvisioningRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "$${target_principal_role_name}"
+      Path: "$${target_principal_role_path}"
+      Description: "IAM Role used to provision OAM Sink, Sink Policy and CloudWatch Dashboard resources"
+$${resource_tags_block}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              "AWS":
+                - "$${trustee_role_arn}"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "OamSinkProvisioning"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowOamSinkManagement
+                Effect: Allow
+                Action:
+                  - oam:CreateSink
+                  - oam:DeleteSink
+                  - oam:GetSink
+                  - oam:UpdateSink
+                  - oam:ListSinks
+                  - oam:PutSinkPolicy
+                  - oam:GetSinkPolicy
+                  - oam:TagResource
+                  - oam:UntagResource
+                  - oam:ListTagsForResource
+                Resource: "*"
+              - Sid: AllowCloudWatchDashboard
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutDashboard
+                  - cloudwatch:DeleteDashboards
+                  - cloudwatch:GetDashboard
+                  - cloudwatch:ListDashboards
+                Resource: "*"
+              - Sid: AllowIamReadOnly
+                Effect: Allow
+                Action:
+                  - iam:Get*
+                  - iam:List*
+                  - iam:CreateServiceLinkedRole
+                Resource: "*"
