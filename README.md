@@ -1,5 +1,12 @@
 # AWS ACF Observability Terraform module
 
+<!-- LOGO -->
+<div style="text-align: right; margin-top: -60px;">
+<a href="https://acai.gmbh">
+  <img src="https://github.com/acai-consulting/acai.public/raw/main/logo/logo_github_readme.png" alt="acai logo" title="ACAI"  width="250" /></a>
+</div>
+</br>
+
 <!-- SHIELDS -->
 [![Maintained by acai.gmbh][acai-shield]][acai-url]
 [![documentation][acai-docs-shield]][acai-docs-url]  
@@ -10,13 +17,6 @@
 ![aws-esc-tested-shield]  
 ![trivy-shield]
 ![checkov-shield]
-
-<!-- LOGO -->
-<div style="text-align: right; margin-top: -60px;">
-<a href="https://acai.gmbh">
-  <img src="https://github.com/acai-consulting/acai.public/raw/main/logo/logo_github_readme.png" alt="acai logo" title="ACAI"  width="250" /></a>
-</div>
-</br>
 
 <!-- BEGIN_ACAI_DOCS -->
 <!-- DESCRIPTION -->
