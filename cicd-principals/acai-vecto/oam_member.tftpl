@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "IAM Role used to provision OAM Member (Observability) Resources"
+
+Resources:
+  OamMemberProvisioningRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "$${target_principal_role_name}"
+      Path: "$${target_principal_role_path}"
+      Description: "IAM Role used to provision OAM Link, Lambda Layer and SSM Parameter resources"
+$${resource_tags_block}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              "AWS":
+                - "$${trustee_role_arn}"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "OamMemberProvisioning"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowOamLinkManagement
+                Effect: Allow
+                Action:
+                  - oam:CreateLink
+                  - oam:DeleteLink
+                  - oam:GetLink
+                  - oam:UpdateLink
+                  - oam:ListLinks
+                  - oam:TagResource
+                  - oam:UntagResource
+                  - oam:ListTagsForResource
+                  - cloudwatch:Link
+                  - logs:Link
+                  - xray:Link
+                Resource: "*"
+              - Sid: AllowLambdaLayerManagement
+                Effect: Allow
+                Action:
+                  - lambda:PublishLayerVersion
+                  - lambda:DeleteLayerVersion
+                  - lambda:GetLayerVersion
+                  - lambda:GetLayerVersionPolicy
+                  - lambda:ListLayerVersions
+                  - lambda:ListLayers
+                  - lambda:AddLayerVersionPermission
+                  - lambda:RemoveLayerVersionPermission
+                Resource: "*"
+              - Sid: AllowSsmParameterManagement
+                Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:DeleteParameter
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:DescribeParameters
+                  - ssm:AddTagsToResource
+                  - ssm:RemoveTagsFromResource
+                  - ssm:ListTagsForResource
+                Resource: "*"
+              - Sid: AllowIamReadOnly
+                Effect: Allow
+                Action:
+                  - iam:Get*
+                  - iam:List*
+                  - iam:CreateServiceLinkedRole
+                Resource: "*"
