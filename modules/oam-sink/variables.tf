@@ -1,4 +1,5 @@
 variable "settings" {
+  
   description = "Module Settings"
   type = object({
     aws_regions = object({
@@ -6,7 +7,7 @@ variable "settings" {
       secondary = list(string)
     })
     oam = object({
-      sink_name           = string
+      sink_name           = optional(string, "platform-observability-sink")
       trusted_account_ids = list(string)
     })
   })
