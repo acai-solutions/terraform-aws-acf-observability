@@ -29,45 +29,6 @@ locals {
     [var.settings.aws_regions.primary],
     var.settings.aws_regions.secondary
   ))
-
-  default_dashboard_body = jsonencode({
-    widgets = [
-      {
-        type   = "metric"
-        x      = 0
-        y      = 0
-        width  = 12
-        height = 6
-        properties = {
-          title   = "Lambda Invocations"
-          view    = "timeSeries"
-          stacked = false
-          region  = var.settings.aws_regions.primary
-          metrics = [
-            for account_id in var.settings.oam.trusted_account_ids :
-            ["AWS/Lambda", "Invocations", { stat = "Sum", period = 300, accountId = account_id }]
-          ]
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 0
-        width  = 12
-        height = 6
-        properties = {
-          title   = "Lambda Errors"
-          view    = "timeSeries"
-          stacked = false
-          region  = var.settings.aws_regions.primary
-          metrics = [
-            for account_id in var.settings.oam.trusted_account_ids :
-            ["AWS/Lambda", "Errors", { stat = "Sum", period = 300, accountId = account_id }]
-          ]
-        }
-      }
-    ]
-  })
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -115,4 +76,95 @@ resource "aws_cloudwatch_dashboard" "lambda" {
   dashboard_name = "${var.settings.oam.sink_name}-lambda-overview"
 
   dashboard_body = var.dashboard_settings != null ? jsonencode(var.dashboard_settings) : local.default_dashboard_body
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# ¦ CLOUDWATCH LOG INSIGHTS — Saved Queries
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_cloudwatch_query_definition" "lambda_errors" {
+  name            = "Lambda/Cross-Account Errors"
+  log_group_names = ["/aws/lambda"]
+
+  query_string = <<-EOT
+    filter @message like /ERROR|Exception|Task timed out/
+    | fields @timestamp, @logStream, @log, @message
+    | sort @timestamp desc
+    | limit 200
+  EOT
+}
+
+resource "aws_cloudwatch_query_definition" "lambda_error_frequency" {
+  name            = "Lambda/Error Frequency (5m bins)"
+  log_group_names = ["/aws/lambda"]
+
+  query_string = <<-EOT
+    filter @message like /ERROR|Exception|Task timed out/
+    | stats count(*) as error_count by bin(5m)
+    | sort @timestamp desc
+  EOT
+}
+
+resource "aws_cloudwatch_query_definition" "lambda_slow_executions" {
+  name            = "Lambda/Slow Executions (>10s)"
+  log_group_names = ["/aws/lambda"]
+
+  query_string = <<-EOT
+    filter @duration > 10000
+    | fields @timestamp, @logStream, @log, @duration, @billedDuration, @memorySize, @maxMemoryUsed
+    | sort @duration desc
+    | limit 100
+  EOT
+}
+
+resource "aws_cloudwatch_query_definition" "lambda_cold_starts" {
+  name            = "Lambda/Cold Starts"
+  log_group_names = ["/aws/lambda"]
+
+  query_string = <<-EOT
+    filter @type = "REPORT" and @initDuration > 0
+    | fields @timestamp, @logStream, @log, @initDuration, @duration, @memorySize, @maxMemoryUsed
+    | sort @initDuration desc
+    | limit 100
+  EOT
+}
+
+resource "aws_cloudwatch_query_definition" "lambda_timeouts" {
+  name            = "Lambda/Timeouts"
+  log_group_names = ["/aws/lambda"]
+
+  query_string = <<-EOT
+    filter @message like /Task timed out/
+    | fields @timestamp, @logStream, @log, @message
+    | sort @timestamp desc
+    | limit 100
+  EOT
+}
+
+resource "aws_cloudwatch_query_definition" "lambda_memory_usage" {
+  name            = "Lambda/Memory Usage (Top Consumers)"
+  log_group_names = ["/aws/lambda"]
+
+  query_string = <<-EOT
+    filter @type = "REPORT"
+    | stats max(@maxMemoryUsed / @memorySize * 100) as max_memory_pct,
+            avg(@maxMemoryUsed / @memorySize * 100) as avg_memory_pct
+      by @logStream
+    | sort max_memory_pct desc
+    | limit 50
+  EOT
+}
+
+resource "aws_cloudwatch_query_definition" "lambda_cost_drivers" {
+  name            = "Lambda/Cost Drivers (Duration x Memory)"
+  log_group_names = ["/aws/lambda"]
+
+  query_string = <<-EOT
+    filter @type = "REPORT"
+    | stats sum(@billedDuration) as total_billed_ms,
+            count(*) as invocation_count,
+            avg(@maxMemoryUsed) as avg_memory_used
+      by @logStream
+    | sort total_billed_ms desc
+    | limit 50
+  EOT
 }
