@@ -27,6 +27,37 @@ This module is part of the [ACAI Cloud Foundation (ACF)][acai-docs-url] and enab
 
 ![architecture][architecture]
 
+<!-- DEPENDENCIES -->
+## Dependencies
+
+This module embeds core functionality from the following ACAI Terraform modules:
+
+| Module Name | Version | Link | Local Folder | 
+|-------------|---------|------|--------------|
+| ACAI PowerTools | 1.0.5 | [GitHub](https://github.com/acai-solutions/acai-powertools) | ./modules-external/acai-powertools | 
+| ACAI Lambda | 1.6.1 | [GitHub](https://github.com/acai-solutions/terraform-aws-lambda) | ./modules-external/terraform-aws-lambda | 
+
+
+```mermaid
+flowchart LR
+    subgraph Public["🟦 Public"]
+        subgraph PT["acai-powertools"]
+            PT_LOG["lib/acai/<b>logging</b>/\n─────────────────\n⚠️ __init__.py + log_level.py\n+ aws_lambda_pt + cloudwatch\n+ domain + ports\n⛔ no console_logger"]
+            PT_UC["use-cases/\nterraform-aws-lambda-layer/"]
+        end
+        LAMBDA["terraform-aws-<b>lambda</b>\n─────────────────\n*.tf, README, docs, modules"]
+    end
+
+    subgraph ACF["🟨 ACF / terraform-aws-acf-observability"]
+        OBS_PT["modules-external/\n<b>acai-powertools</b>/"]
+        OBS_LAMBDA["modules-external/\nterraform-aws-<b>lambda</b>/"]
+    end
+
+    PT_LOG -- "⚠️ subset:\ncore + cloudwatch\n+ aws_lambda_pt" --> OBS_PT
+    PT_UC --> OBS_PT
+    LAMBDA --> OBS_LAMBDA
+```
+
 ## Overview
 
 AWS CloudWatch Observability Access Manager (OAM) allows you to link multiple AWS accounts (sources) to a central monitoring account (sink) so that telemetry data - metrics, logs and traces - from all source accounts becomes visible in the monitoring account's CloudWatch console without the need to switch between accounts.

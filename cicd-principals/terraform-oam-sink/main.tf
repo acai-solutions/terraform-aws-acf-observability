@@ -68,7 +68,6 @@ data "aws_iam_policy_document" "oam_sink_policy" {
       "oam:CreateSink",
       "oam:DeleteSink",
       "oam:GetSink",
-      "oam:UpdateSink",
       "oam:ListSinks",
       "oam:PutSinkPolicy",
       "oam:GetSinkPolicy",
@@ -87,6 +86,9 @@ data "aws_iam_policy_document" "oam_sink_policy" {
       "cloudwatch:DeleteDashboards",
       "cloudwatch:GetDashboard",
       "cloudwatch:ListDashboards",
+      "logs:PutQueryDefinition",
+      "logs:DescribeQueryDefinitions",
+      "logs:DeleteQueryDefinition",
     ]
     resources = ["*"]
   }

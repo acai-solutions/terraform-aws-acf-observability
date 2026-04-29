@@ -28,7 +28,6 @@ $${resource_tags_block}
                   - oam:CreateSink
                   - oam:DeleteSink
                   - oam:GetSink
-                  - oam:UpdateSink
                   - oam:ListSinks
                   - oam:PutSinkPolicy
                   - oam:GetSinkPolicy
@@ -43,6 +42,9 @@ $${resource_tags_block}
                   - cloudwatch:DeleteDashboards
                   - cloudwatch:GetDashboard
                   - cloudwatch:ListDashboards
+                  - logs:PutQueryDefinition
+                  - logs:GetQueryDefinition
+                  - logs:DeleteQueryDefinition
                 Resource: "*"
               - Sid: AllowIamReadOnly
                 Effect: Allow
