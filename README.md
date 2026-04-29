@@ -48,7 +48,7 @@ flowchart LR
         LAMBDA["terraform-aws-<b>lambda</b>\n─────────────────\n*.tf, README, docs, modules"]
     end
 
-    subgraph ACF["🟨 ACF / terraform-aws-acf-observability"]
+    subgraph ACF["🟪 ACF / terraform-aws-acf-observability"]
         OBS_PT["modules-external/\n<b>acai-powertools</b>/"]
         OBS_LAMBDA["modules-external/\nterraform-aws-<b>lambda</b>/"]
     end
