@@ -34,7 +34,7 @@ This module embeds core functionality from the following ACAI Terraform modules:
 
 | Module Name | Version | Link | Local Folder | 
 |-------------|---------|------|--------------|
-| ACAI PowerTools | 1.0.5 | [GitHub](https://github.com/acai-solutions/acai-powertools) | ./modules-external/acai-powertools | 
+| ACAI PowerTools | 1.0.6 | [GitHub](https://github.com/acai-solutions/acai-powertools) | ./modules-external/acai-powertools | 
 | ACAI Lambda | 1.6.1 | [GitHub](https://github.com/acai-solutions/terraform-aws-lambda) | ./modules-external/terraform-aws-lambda | 
 
 

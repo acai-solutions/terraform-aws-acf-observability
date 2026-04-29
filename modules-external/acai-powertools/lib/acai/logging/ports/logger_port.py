@@ -47,7 +47,7 @@ class LoggerPort(ABC):
     implement it.
     """
 
-    VERSION: str = "1.1.4"
+    VERSION: str = "1.0.6"
 
     # fmt: off
     @abstractmethod
