@@ -34,7 +34,7 @@ This module embeds core functionality from the following ACAI Terraform modules:
 
 | Module Name | Version | Link | Local Folder | 
 |-------------|---------|------|--------------|
-| ACAI PowerTools | 1.0.5 | [GitHub](https://github.com/acai-solutions/acai-powertools) | ./modules-external/acai-powertools | 
+| ACAI PowerTools | 1.0.6 | [GitHub](https://github.com/acai-solutions/acai-powertools) | ./modules-external/acai-powertools | 
 | ACAI Lambda | 1.6.1 | [GitHub](https://github.com/acai-solutions/terraform-aws-lambda) | ./modules-external/terraform-aws-lambda | 
 
 
@@ -48,7 +48,7 @@ flowchart LR
         LAMBDA["terraform-aws-<b>lambda</b>\n─────────────────\n*.tf, README, docs, modules"]
     end
 
-    subgraph ACF["🟨 ACF / terraform-aws-acf-observability"]
+    subgraph ACF["🟪 ACF / terraform-aws-acf-observability"]
         OBS_PT["modules-external/\n<b>acai-powertools</b>/"]
         OBS_LAMBDA["modules-external/\nterraform-aws-<b>lambda</b>/"]
     end
