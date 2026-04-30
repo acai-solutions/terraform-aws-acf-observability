@@ -2,8 +2,9 @@ variable "layer_settings" {
   description = "Settings for the Lambda layer."
   type = object({
     layer_base_name      = string
-    layer_runtimes       = list(string)
-    layer_architectures  = list(string)
+    runtimes             = list(string)
+    architectures        = list(string)
+    inline_files         = optional(map(string), {})
     ssm_parameter_prefix = optional(string, null)
   })
 }

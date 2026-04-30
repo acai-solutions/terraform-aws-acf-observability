@@ -69,9 +69,9 @@ module "oam_member_1" {
       sink_identifiers = module.oam_sink.oam_sink_arns
     }
     lambda_layer = {
-      layer_base_name     = "acme-powertools-m1"
-      layer_runtimes      = ["python3.12"]
-      layer_architectures = ["arm64"]
+      layer_base_name = "acme-powertools-m1"
+      runtimes        = ["python3.12"]
+      architectures   = ["arm64"]
     }
   }
   providers = {
@@ -101,9 +101,9 @@ module "oam_member_2" {
       sink_identifiers = module.oam_sink.oam_sink_arns
     }
     lambda_layer = {
-      layer_base_name     = "acme-powertools-m2"
-      layer_runtimes      = ["python3.12"]
-      layer_architectures = ["arm64"]
+      layer_base_name = "acme-powertools-m2"
+      runtimes        = ["python3.12"]
+      architectures   = ["arm64"]
     }
   }
   providers = {

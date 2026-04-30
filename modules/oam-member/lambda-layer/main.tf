@@ -16,14 +16,16 @@ terraform {
 # ¦ LOCALS
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
-  inline_files_dir = "${path.module}/lambda-layer-inline-files"
-  inline_files = {
-    for relative_path in fileset(local.inline_files_dir, "**/*") :
-    relative_path => file("${local.inline_files_dir}/${relative_path}")
+  bundled_inline_files_dir = "${path.module}/lambda-layer-inline-files"
+  bundled_inline_files = {
+    for relative_path in fileset(local.bundled_inline_files_dir, "**/*") :
+    relative_path => file("${local.bundled_inline_files_dir}/${relative_path}")
   }
 
+  inline_files = merge(local.bundled_inline_files, var.layer_settings.inline_files)
+
   layer_matrix = {
-    for pair in setproduct(var.layer_settings.layer_runtimes, var.layer_settings.layer_architectures) :
+    for pair in setproduct(var.layer_settings.runtimes, var.layer_settings.architectures) :
     "${replace(pair[0], ".", "")}-${pair[1]}" => {
       runtime = pair[0]
       arch    = pair[1]
