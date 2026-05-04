@@ -29,7 +29,7 @@ locals {
     }
   )
   aws_ssm_parameter_prefix = var.ssm_parameter_prefix == "" ? "" : "/${lower(var.ssm_parameter_prefix)}"
-  solution_version         = "1.0.6"
+  solution_version         = "1.0.7"
 }
 resource "aws_ssm_parameter" "product_version" {
   #checkov:skip=CKV2_AWS_34: AWS SSM Parameter should be Encrypted not required for module version
@@ -47,18 +47,18 @@ resource "aws_ssm_parameter" "product_version" {
 # ¦ LOCALS
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
-  # Per-module-instance build paths — every consumer `module "x" { source = ... }`
-  # block gets its own `path.module` (resolves to .terraform/modules/<address>/...),
-  # so building under path.module guarantees that parallel instantiations of this
-  # module from the same consumer never race on the same scratch directory or zip.
-  # The `triggers.zip_present` trigger below rebuilds when `terraform init` wipes
-  # .terraform/modules between CI stages.
+  # Per-instance build paths keyed by layer_name — keeps `for_each`
+  # invocations from sharing (and racing on) the same directories/zip.
+  # Build artefacts live under path.root (the consumer workspace) instead of
+  # path.module (which lives inside .terraform/modules/ and gets wiped by
+  # `terraform init` in CI apply stages).
   # IMPORTANT: abspath() is required because the provisioner runs with
   # working_dir = path.module, so relative paths would resolve against the
-  # module directory; the resource's `filename` attribute resolves relative to
-  # the root module. Using absolute paths makes both references identical.
-  layer_source_folder       = "${abspath(path.module)}/.layer-build/${var.layer_settings.layer_name}"
-  zip_folder                = "${abspath(path.module)}/.layer-build"
+  # module directory, not the root module directory. The resource's `filename`
+  # attribute, however, resolves relative to the root module. Using absolute
+  # paths ensures both the build script and the resource reference the same file.
+  layer_source_folder       = "${abspath(path.root)}/.layer-build/${var.layer_settings.layer_name}"
+  zip_folder                = "${abspath(path.root)}/.layer-build"
   acai_powertools_layer_zip = "${local.zip_folder}/${var.layer_settings.layer_name}.zip"
 
   is_windows = length(regexall("^[A-Za-z]:[\\\\/]", abspath(path.module))) > 0
@@ -135,7 +135,7 @@ resource "null_resource" "build_layer" {
     command = local.is_windows ? trimspace(
       "python build_layer.py ${local.modules_arg} ${local.pip_args} ${local.inline_files_arg} --source-dir \"${local.layer_source_folder}\" --output \"${local.acai_powertools_layer_zip}\""
       ) : trimspace(
-      "set -e; if command -v python3 >/dev/null 2>&1; then PY=python3; else PY=python; fi; \"$PY\" -u build_layer.py ${local.modules_arg} ${local.pip_args} ${local.inline_files_arg} --source-dir '${local.layer_source_folder}' --output '${local.acai_powertools_layer_zip}' 2>&1; rc=$?; if [ $rc -ne 0 ]; then echo '=== build_layer.py FAILED (exit '$rc') ===' >&2; fi; exit $rc"
+      "if command -v python3 >/dev/null 2>&1; then PY=python3; else PY=python; fi && \"$PY\" build_layer.py ${local.modules_arg} ${local.pip_args} ${local.inline_files_arg} --source-dir '${local.layer_source_folder}' --output '${local.acai_powertools_layer_zip}'"
     )
     working_dir = path.module
     environment = {
