@@ -1,4 +1,4 @@
-localhost# ACAI Cloud Foundation (ACF)
+# ACAI Cloud Foundation (ACF)
 # Copyright (C) 2025 ACAI GmbH
 # Licensed under AGPL v3
 #
