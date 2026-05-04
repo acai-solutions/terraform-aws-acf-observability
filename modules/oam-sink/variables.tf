@@ -1,5 +1,5 @@
 variable "settings" {
-  
+
   description = "Module Settings"
   type = object({
     aws_regions = object({
