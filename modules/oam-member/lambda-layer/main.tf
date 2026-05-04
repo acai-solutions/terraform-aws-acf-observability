@@ -55,7 +55,7 @@ module "layer" {
     description              = "Powertools Lambda layer (${each.value.runtime} / ${each.value.arch})"
     compatible_runtimes      = [each.value.runtime]
     compatible_architectures = [each.value.arch]
-    acai_modules             = ["logging", "boto3_helper", "python_helper", "storage"]
+    acai_modules             = ["logging", "aws_helper", "python_helper", "storage"]
     pip_requirements         = ["aws-lambda-powertools==2.43.1"]
     inline_files             = local.inline_files
   }

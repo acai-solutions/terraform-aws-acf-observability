@@ -308,7 +308,7 @@ def lambda_handler(event, context):
 * **Structured JSON output** - Every log entry is emitted as JSON with `service`, `level`, `timestamp`, `function_name`, `request_id` and custom fields.
 * **Lambda context injection** - The `@logger.inject_lambda_context()` decorator automatically enriches every log line with the Lambda request ID, function name and memory settings.
 * **Environment-driven log level** - Defaults to the `LOG_LEVEL` environment variable (or `INFO`), so you can change verbosity without code changes.
-* **ACAI Powertools modules** - The layer bundles `logging`, `boto3_helper`, `python_helper` and `storage` from ACAI Powertools plus `aws-lambda-powertools`.
+* **ACAI Powertools modules** - The layer bundles `logging`, `aws_helper`, `python_helper` and `storage` from ACAI Powertools plus `aws-lambda-powertools`.
 
 <!-- EXAMPLES -->
 ## Examples
