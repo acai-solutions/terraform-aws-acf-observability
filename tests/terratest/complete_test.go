@@ -44,9 +44,9 @@ func TestExampleComplete(t *testing.T) {
 	defer terraform.Destroy(t, terraformModule)
 	terraform.InitAndApply(t, terraformModule)
 
-	// Retrieve the 'test_success' output
-	testSuccessOutput := terraform.Output(t, terraformModule, "example_passed")
+	// Retrieve the 'example_passed' output using outputClean to strip warnings
+	testSuccessOutput := outputClean(t, terraformModule, "example_passed")
 
-	// Assert that 'test_success' equals "true"
-	assert.Equal(t, "true", testSuccessOutput, "The test_success output is not true")
+	// Assert that 'example_passed' equals "true"
+	assert.Equal(t, "true", testSuccessOutput, "The example_passed output should be true")
 }
