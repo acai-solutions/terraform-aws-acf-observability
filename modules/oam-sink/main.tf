@@ -32,6 +32,15 @@ locals {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
+# ¦ DISCOVER LAMBDA LOG GROUPS (sink account, primary region)
+# ¦ Used by the "By Region" log-Insights dashboard widgets.
+# ¦ Note: Cross-account log groups from OAM source accounts are NOT discovered here.
+# ---------------------------------------------------------------------------------------------------------------------
+data "aws_cloudwatch_log_groups" "lambda" {
+  log_group_name_prefix = "/aws/lambda/"
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
 # ¦ OAM SINK — one per region
 # ---------------------------------------------------------------------------------------------------------------------
 data "aws_iam_policy_document" "oam_sink" {
@@ -70,12 +79,18 @@ resource "aws_oam_sink_policy" "this" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
-# ¦ CLOUDWATCH DASHBOARD — Lambda Invocations & Errors
+# ¦ CLOUDWATCH DASHBOARDS
 # ---------------------------------------------------------------------------------------------------------------------
-resource "aws_cloudwatch_dashboard" "lambda" {
+resource "aws_cloudwatch_dashboard" "lambda_overview" {
   dashboard_name = "${var.settings.oam.sink_name}-lambda-overview"
 
-  dashboard_body = var.dashboard_settings != null ? jsonencode(var.dashboard_settings) : local.default_dashboard_body
+  dashboard_body = var.dashboard_settings != null ? jsonencode(var.dashboard_settings) : local.global_dashboard_body
+}
+
+resource "aws_cloudwatch_dashboard" "lambda_drilldown" {
+  dashboard_name = "${var.settings.oam.sink_name}-lambda-drilldown"
+
+  dashboard_body = local.drilldown_dashboard_body
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
