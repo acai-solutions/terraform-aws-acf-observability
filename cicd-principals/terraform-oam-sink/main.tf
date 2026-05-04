@@ -89,6 +89,7 @@ data "aws_iam_policy_document" "oam_sink_policy" {
       "logs:PutQueryDefinition",
       "logs:DescribeQueryDefinitions",
       "logs:DeleteQueryDefinition",
+      "logs:DescribeLogGroups",
     ]
     resources = ["*"]
   }
