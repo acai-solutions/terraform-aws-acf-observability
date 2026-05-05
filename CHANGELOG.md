@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0](https://github.com/acai-solutions/terraform-aws-acf-observability/compare/1.0.1...1.1.0) (2026-05-05)
+
+
+### Features
+
+* fixed circular issue, refined layer-python ([#3](https://github.com/acai-solutions/terraform-aws-acf-observability/issues/3)) ([30b92c1](https://github.com/acai-solutions/terraform-aws-acf-observability/commit/30b92c1f5ed2dffcd94cf1b3fb481fe0c5c08a60))
+
 ## [1.0.1](https://github.com/acai-solutions/terraform-aws-acf-observability/compare/1.0.0...1.0.1) (2026-05-05)
 
 
