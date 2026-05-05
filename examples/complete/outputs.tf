@@ -29,14 +29,29 @@ output "lambda_dashboard_arn" {
   value       = module.oam_sink.lambda_dashboard_arn
 }
 
+output "lambda_drilldown_dashboard_arn" {
+  description = "CloudWatch dashboard ARN for Lambda drill-down."
+  value       = module.oam_sink.lambda_drilldown_dashboard_arn
+}
+
 output "member_1_success_result" {
   description = "Result of invoking the success lambda in member 1."
   value       = jsondecode(aws_lambda_invocation.member_1_success.result)
 }
 
+output "member_1_success_secondary_result" {
+  description = "Result of invoking the success lambda in member 1 (secondary region)."
+  value       = jsondecode(aws_lambda_invocation.member_1_success_secondary.result)
+}
+
 output "member_2_success_result" {
   description = "Result of invoking the success lambda in member 2."
   value       = jsondecode(aws_lambda_invocation.member_2_success.result)
+}
+
+output "member_2_success_secondary_result" {
+  description = "Result of invoking the success lambda in member 2 (secondary region)."
+  value       = jsondecode(aws_lambda_invocation.member_2_success_secondary.result)
 }
 
 output "error_lambda_names" {

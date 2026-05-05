@@ -26,7 +26,7 @@ import json
 import os
 import platform as _platform
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tempfile
 import zipfile
@@ -41,7 +41,7 @@ DEPENDENCY_MAP: dict[str, list[str]] = {
     "ai_text_search": ["logging"],
     "ai_tools": [],
     "ai_vector_store": ["logging"],
-    "boto3_helper": ["logging"],
+    "aws_helper": ["logging"],
     "logging": ["storage"],
     "python_helper": [],
     "storage": ["logging"],
@@ -237,7 +237,7 @@ def install_pip_packages(
     if python_version:
         print(f"  Python version:  {python_version}")
 
-    result = subprocess.run(cmd, check=False)
+    result = subprocess.run(cmd, check=False)  # nosec B603
     if result.returncode != 0:
         print("ERROR: pip install failed.", file=sys.stderr)
         sys.exit(1)

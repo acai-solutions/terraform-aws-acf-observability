@@ -71,3 +71,30 @@ provider "aws" {
     }
   }
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# ¦ SECONDARY REGION PROVIDERS — used by emitters deployed to a 2nd region
+# ---------------------------------------------------------------------------------------------------------------------
+provider "aws" {
+  region = local.regions.secondary[0]
+  alias  = "core_logging_secondary"
+
+  dynamic "assume_role" {
+    for_each = var.iam_role_name != "" ? [1] : []
+    content {
+      role_arn = "arn:${var.aws_partition}:iam::${var.account_ids.core_logging}:role/${var.iam_role_name}"
+    }
+  }
+}
+
+provider "aws" {
+  region = local.regions.secondary[0]
+  alias  = "core_backup_secondary"
+
+  dynamic "assume_role" {
+    for_each = var.iam_role_name != "" ? [1] : []
+    content {
+      role_arn = "arn:${var.aws_partition}:iam::${var.account_ids.core_backup}:role/${var.iam_role_name}"
+    }
+  }
+}

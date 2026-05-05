@@ -10,5 +10,10 @@ output "oam_sink_ids" {
 
 output "lambda_dashboard_arn" {
   description = "ARN of the Lambda overview CloudWatch dashboard."
-  value       = aws_cloudwatch_dashboard.lambda.dashboard_arn
+  value       = aws_cloudwatch_dashboard.lambda_overview.dashboard_arn
+}
+
+output "lambda_drilldown_dashboard_arn" {
+  description = "ARN of the Lambda drill-down CloudWatch dashboard."
+  value       = aws_cloudwatch_dashboard.lambda_drilldown.dashboard_arn
 }

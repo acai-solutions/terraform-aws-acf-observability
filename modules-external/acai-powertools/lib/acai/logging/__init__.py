@@ -42,6 +42,7 @@ def create_lambda_logger(
     adapter = AwsLambdaPtLogger(
         service=config.service_name,
         level=config.log_level,
+        use_powertools=config.log_format != "FLAT",
     )
 
     logger = Logger(adapter)

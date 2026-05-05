@@ -69,9 +69,9 @@ module "oam_member_1" {
       sink_identifiers = module.oam_sink.oam_sink_arns
     }
     lambda_layer = {
-      layer_base_name     = "acme-powertools-m1"
-      layer_runtimes      = ["python3.12"]
-      layer_architectures = ["arm64"]
+      layer_base_name = "acme-powertools-m1"
+      runtimes        = ["python3.12"]
+      architectures   = ["arm64"]
     }
   }
   providers = {
@@ -89,6 +89,15 @@ module "member_1_worker" {
   }
 }
 
+module "member_1_worker_secondary" {
+  source      = "./member-worker"
+  member_name = "member-1-secondary"
+  layer_arn   = module.oam_member_1.layer_arns["python312-arm64"][local.regions.secondary[0]]
+  providers = {
+    aws = aws.core_logging_secondary
+  }
+}
+
 # ---------------------------------------------------------------------------------------------------------------------
 # ¦ OAM MEMBER 2 — linked to sink, deploys two demo lambdas
 # ---------------------------------------------------------------------------------------------------------------------
@@ -101,9 +110,9 @@ module "oam_member_2" {
       sink_identifiers = module.oam_sink.oam_sink_arns
     }
     lambda_layer = {
-      layer_base_name     = "acme-powertools-m2"
-      layer_runtimes      = ["python3.12"]
-      layer_architectures = ["arm64"]
+      layer_base_name = "acme-powertools-m2"
+      runtimes        = ["python3.12"]
+      architectures   = ["arm64"]
     }
   }
   providers = {
@@ -121,11 +130,20 @@ module "member_2_worker" {
   }
 }
 
+module "member_2_worker_secondary" {
+  source      = "./member-worker"
+  member_name = "member-2-secondary"
+  layer_arn   = module.oam_member_2.layer_arns["python312-arm64"][local.regions.secondary[0]]
+  providers = {
+    aws = aws.core_backup_secondary
+  }
+}
+
 # ---------------------------------------------------------------------------------------------------------------------
 # ¦ INVOKE SUCCESS LAMBDAS — results visible in terraform output
 # ---------------------------------------------------------------------------------------------------------------------
 resource "time_sleep" "wait_for_lambdas" {
-  depends_on      = [module.member_1_worker, module.member_2_worker]
+  depends_on      = [module.member_1_worker, module.member_1_worker_secondary, module.member_2_worker, module.member_2_worker_secondary]
   create_duration = "10s"
 }
 
@@ -136,9 +154,23 @@ resource "aws_lambda_invocation" "member_1_success" {
   depends_on    = [time_sleep.wait_for_lambdas]
 }
 
+resource "aws_lambda_invocation" "member_1_success_secondary" {
+  function_name = module.member_1_worker_secondary.success_lambda_name
+  input         = jsonencode({ source = "terraform", member = "member-1-secondary" })
+  provider      = aws.core_logging_secondary
+  depends_on    = [time_sleep.wait_for_lambdas]
+}
+
 resource "aws_lambda_invocation" "member_2_success" {
   function_name = module.member_2_worker.success_lambda_name
   input         = jsonencode({ source = "terraform", member = "member-2" })
   provider      = aws.core_backup
+  depends_on    = [time_sleep.wait_for_lambdas]
+}
+
+resource "aws_lambda_invocation" "member_2_success_secondary" {
+  function_name = module.member_2_worker_secondary.success_lambda_name
+  input         = jsonencode({ source = "terraform", member = "member-2-secondary" })
+  provider      = aws.core_backup_secondary
   depends_on    = [time_sleep.wait_for_lambdas]
 }
