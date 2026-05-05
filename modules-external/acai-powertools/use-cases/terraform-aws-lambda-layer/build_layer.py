@@ -603,6 +603,62 @@ def _do_build(args: argparse.Namespace) -> None:
         create_zip(args.source_dir, args.output)
 
 
+def _decode_env_json(env_var: str, expected_type: type) -> object | None:
+    """Best-effort JSON decode of an env var, returning None on absence/parse error/type mismatch."""
+    raw = os.environ.get(env_var, "").strip()
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, expected_type) else None
+
+
+def _collect_fingerprint_inputs(args: argparse.Namespace) -> tuple[list[str] | None, list[str], dict[str, str]]:
+    """Resolve the inputs that feed into `_inputs_fingerprint`.
+
+    Returns (modules, requirements_specs, inline_files_map). Best-effort: a malformed
+    env var degrades to an empty value rather than aborting, since `_do_build` will
+    re-validate inputs strictly before actually building.
+    """
+    modules = None if args.no_acai else _select_modules(args)
+
+    requirements_specs: list[str] = []
+    if args.requirements:
+        parsed = _decode_env_json("PIP_REQUIREMENTS_JSON", list)
+        if parsed is not None:
+            requirements_specs = [s for s in parsed if isinstance(s, str)]
+
+    inline_files_map: dict[str, str] = {}
+    if args.inline_files:
+        parsed = _decode_env_json("INLINE_FILES_JSON", dict)
+        if parsed is not None:
+            inline_files_map = {k: v for k, v in parsed.items() if isinstance(v, str)}
+
+    return modules, requirements_specs, inline_files_map
+
+
+def _build_or_reuse(args: argparse.Namespace, fingerprint: str) -> None:
+    """Acquire the build lock, then either reuse the existing zip or rebuild."""
+    fingerprint_path = Path(str(args.output) + ".fingerprint")
+    lock_path = Path(str(args.output) + ".lock")
+
+    with _build_lock(lock_path):
+        existing_fp = fingerprint_path.read_text(encoding="utf-8").strip() if fingerprint_path.exists() else ""
+        if args.output.exists() and existing_fp == fingerprint and not args.no_zip:
+            print(
+                f"Reusing existing layer zip ({args.output.name}); inputs unchanged "
+                f"and another concurrent build already produced it."
+            )
+            return
+
+        _do_build(args)
+
+        if not args.no_zip:
+            fingerprint_path.write_text(fingerprint, encoding="utf-8")
+
+
 def main() -> None:
     parser = _create_parser()
     args = parser.parse_args()
@@ -614,30 +670,7 @@ def main() -> None:
     _validate_no_acai_args(args)
 
     try:
-        # Compute fingerprint of inputs so concurrent sibling processes that
-        # share the same --output (a common pattern when one Terraform root
-        # invokes the same layer module across many provider/account contexts)
-        # can skip rebuilding when the zip already reflects identical inputs.
-        modules_for_fp = (
-            None if args.no_acai else (_select_modules(args) if args.modules or not args.list else None)
-        )
-        requirements_specs: list[str] = []
-        if args.requirements:
-            raw_json = os.environ.get("PIP_REQUIREMENTS_JSON", "").strip()
-            if raw_json:
-                with contextlib.suppress(json.JSONDecodeError):
-                    parsed = json.loads(raw_json)
-                    if isinstance(parsed, list):
-                        requirements_specs = [s for s in parsed if isinstance(s, str)]
-        inline_files_map: dict[str, str] = {}
-        if args.inline_files:
-            inline_json = os.environ.get("INLINE_FILES_JSON", "")
-            if inline_json:
-                with contextlib.suppress(json.JSONDecodeError):
-                    parsed = json.loads(inline_json)
-                    if isinstance(parsed, dict):
-                        inline_files_map = {k: v for k, v in parsed.items() if isinstance(v, str)}
-
+        modules_for_fp, requirements_specs, inline_files_map = _collect_fingerprint_inputs(args)
         fingerprint = _inputs_fingerprint(
             modules_for_fp,
             requirements_specs,
@@ -645,28 +678,7 @@ def main() -> None:
             args.pip_platform,
             args.pip_python_version,
         )
-        fingerprint_path = Path(str(args.output) + ".fingerprint")
-        lock_path = Path(str(args.output) + ".lock")
-
-        with _build_lock(lock_path):
-            existing_fp = fingerprint_path.read_text(encoding="utf-8").strip() if fingerprint_path.exists() else ""
-            if (
-                args.output.exists()
-                and existing_fp == fingerprint
-                and not args.no_zip
-            ):
-                print(
-                    f"Reusing existing layer zip ({args.output.name}); inputs unchanged "
-                    f"and another concurrent build already produced it."
-                )
-                print("\nDone.")
-                return
-
-            _do_build(args)
-
-            if not args.no_zip:
-                fingerprint_path.write_text(fingerprint, encoding="utf-8")
-
+        _build_or_reuse(args, fingerprint)
         print("\nDone.")
     except Exception as e:
         print(f"ERROR: Build failed: {e}", file=sys.stderr)
