@@ -7,8 +7,9 @@ locals {
     var.settings.aws_regions.secondary
   )
 
-  # Dedupe trusted_account_ids — CloudWatch dashboard variables reject duplicate values.
-  trusted_account_ids_unique = distinct(var.settings.oam.trusted_account_ids)
+  # Dedupe + sort trusted_account_ids — CloudWatch dashboard variables reject duplicate values,
+  # and sorting gives a stable, predictable order in the Account selector dropdown.
+  trusted_account_ids_unique = sort(distinct(var.settings.oam.trusted_account_ids))
 
   # ============================================================================================
   # DASHBOARD 1: Global Overview (no interactive filters — shows all accounts/regions at once)
@@ -22,7 +23,7 @@ locals {
           x      = 0
           y      = 0
           width  = 8
-          height = 6
+          height = 12
           properties = {
             title   = "Lambda Invocations by Account"
             view    = "timeSeries"
@@ -39,7 +40,7 @@ locals {
           x      = 8
           y      = 0
           width  = 8
-          height = 6
+          height = 12
           properties = {
             title   = "Lambda Errors by Account"
             view    = "timeSeries"
@@ -56,7 +57,7 @@ locals {
           x      = 16
           y      = 0
           width  = 8
-          height = 6
+          height = 12
           properties = {
             title   = "Lambda Duration p95 by Account"
             view    = "timeSeries"
@@ -74,9 +75,9 @@ locals {
         {
           type   = "log"
           x      = 0
-          y      = 6
+          y      = 12
           width  = 12
-          height = 6
+          height = 12
           properties = {
             title         = "Log Errors by Region"
             query         = "filter level = 'ERROR' or @message like /ERROR/ | stats count(*) as error_count by aws_region | sort error_count desc"
@@ -88,9 +89,9 @@ locals {
         {
           type   = "log"
           x      = 12
-          y      = 6
+          y      = 12
           width  = 12
-          height = 6
+          height = 12
           properties = {
             title         = "Log Invocations by Region (5m bins)"
             query         = "stats count(*) as invocations by aws_region, bin(5m) | sort invocations desc"
@@ -105,9 +106,9 @@ locals {
         {
           type   = "metric"
           x      = 0
-          y      = 12
+          y      = 24
           width  = 8
-          height = 6
+          height = 12
           properties = {
             title   = "Lambda Invocations by Function"
             view    = "timeSeries"
@@ -121,9 +122,9 @@ locals {
         {
           type   = "metric"
           x      = 8
-          y      = 12
+          y      = 24
           width  = 8
-          height = 6
+          height = 12
           properties = {
             title   = "Lambda Errors by Function"
             view    = "timeSeries"
@@ -137,9 +138,9 @@ locals {
         {
           type   = "metric"
           x      = 16
-          y      = 12
+          y      = 24
           width  = 8
-          height = 6
+          height = 12
           properties = {
             title   = "Lambda Duration p95 by Function"
             view    = "timeSeries"
@@ -200,7 +201,7 @@ locals {
         x      = 0
         y      = 1
         width  = 8
-        height = 6
+        height = 12
         properties = {
           title   = "Invocations (selected account)"
           view    = "timeSeries"
@@ -216,7 +217,7 @@ locals {
         x      = 8
         y      = 1
         width  = 8
-        height = 6
+        height = 12
         properties = {
           title   = "Errors (selected account)"
           view    = "timeSeries"
@@ -232,7 +233,7 @@ locals {
         x      = 16
         y      = 1
         width  = 8
-        height = 6
+        height = 12
         properties = {
           title   = "Duration p95 (selected account)"
           view    = "timeSeries"
@@ -240,54 +241,6 @@ locals {
           region  = "__REGION__"
           metrics = [
             [{ expression = "SEARCH('{AWS/Lambda,FunctionName} MetricName=\"Duration\" :aws.AccountId=\"__ACCOUNT_ID__\"', 'p95', 300)", id = "dur_total" }]
-          ]
-        }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 7
-        width  = 8
-        height = 6
-        properties = {
-          title   = "Invocations by Function (selected account)"
-          view    = "timeSeries"
-          stacked = false
-          region  = "__REGION__"
-          metrics = [
-            [{ expression = "SEARCH('{AWS/Lambda,FunctionName} MetricName=\"Invocations\" :aws.AccountId=\"__ACCOUNT_ID__\"', 'Sum', 300)", id = "acct_invocations" }]
-          ]
-        }
-      },
-      {
-        type   = "metric"
-        x      = 8
-        y      = 7
-        width  = 8
-        height = 6
-        properties = {
-          title   = "Errors by Function (selected account)"
-          view    = "timeSeries"
-          stacked = false
-          region  = "__REGION__"
-          metrics = [
-            [{ expression = "SEARCH('{AWS/Lambda,FunctionName} MetricName=\"Errors\" :aws.AccountId=\"__ACCOUNT_ID__\"', 'Sum', 300)", id = "acct_errors" }]
-          ]
-        }
-      },
-      {
-        type   = "metric"
-        x      = 16
-        y      = 7
-        width  = 8
-        height = 6
-        properties = {
-          title   = "Duration p95 by Function (selected account)"
-          view    = "timeSeries"
-          stacked = false
-          region  = "__REGION__"
-          metrics = [
-            [{ expression = "SEARCH('{AWS/Lambda,FunctionName} MetricName=\"Duration\" :aws.AccountId=\"__ACCOUNT_ID__\"', 'p95', 300)", id = "acct_duration" }]
           ]
         }
       }

@@ -33,14 +33,6 @@ locals {
   }
 
   layer_ssm_parameter_prefix = "/${trim(coalesce(var.layer_settings.ssm_parameter_prefix, "platform"), "/")}/lambda-layers/${var.layer_settings.layer_base_name}"
-
-  layer_ssm_parameters = {
-    for pair in setproduct(keys(local.layer_matrix), var.regions) :
-    "${pair[0]}/${pair[1]}" => {
-      variant = pair[0]
-      region  = pair[1]
-    }
-  }
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -55,9 +47,12 @@ module "layer" {
     description              = "Powertools Lambda layer (${each.value.runtime} / ${each.value.arch})"
     compatible_runtimes      = [each.value.runtime]
     compatible_architectures = [each.value.arch]
-    acai_modules             = ["logging", "aws_helper", "python_helper", "storage"]
-    pip_requirements         = ["aws-lambda-powertools==2.43.1"]
-    inline_files             = local.inline_files
+    # Hardcoded: this wrapper builds a fixed-purpose "platform logging" layer, not a generic one.
+    # Only modules that are actually vendored under modules-external/acai-powertools/lib/acai/
+    # may be listed here — anything else triggers "Skipping missing module" warnings at build time.
+    acai_modules     = ["logging"]
+    pip_requirements = ["aws-lambda-powertools==2.43.1"]
+    inline_files     = local.inline_files
   }
 
   regions = var.regions
@@ -67,17 +62,17 @@ module "layer" {
 
 # ---------------------------------------------------------------------------------------------------------------------
 # ¦ SSM PARAMETERS — publish each variant's layer ARN in every region
+#
+# Delegated to a per-variant child module on purpose; see `ssm_parameter/main.tf` for the rationale.
 # ---------------------------------------------------------------------------------------------------------------------
-resource "aws_ssm_parameter" "layer_arn" {
-  #checkov:skip=CKV2_AWS_34: Encryption not required for Lambda layer ARN values
-  for_each = local.layer_ssm_parameters
+module "layer_ssm" {
+  source   = "./ssm_parameter"
+  for_each = local.layer_matrix
 
-  region      = each.value.region
-  name        = "${local.layer_ssm_parameter_prefix}/${each.value.variant}/arn"
-  description = "ARN of the powertools Lambda layer '${var.layer_settings.layer_base_name}-${each.value.variant}' in ${each.value.region}."
-  type        = "String"
-  tier        = "Standard"
-  value       = module.layer[each.value.variant].layer_arns[each.value.region]
-
-  tags = var.resource_tags
+  variant              = each.key
+  layer_base_name      = var.layer_settings.layer_base_name
+  ssm_parameter_prefix = local.layer_ssm_parameter_prefix
+  regions              = var.regions
+  layer_arns           = module.layer[each.key].layer_arns
+  resource_tags        = var.resource_tags
 }
