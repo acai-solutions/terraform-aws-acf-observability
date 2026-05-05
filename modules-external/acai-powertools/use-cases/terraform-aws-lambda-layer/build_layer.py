@@ -283,7 +283,10 @@ def _inputs_fingerprint(
         {
             "modules": sorted(modules) if modules else [],
             "requirements": sorted(requirements_specs),
-            "inline_files": {k: hashlib.sha256(v.encode("utf-8")).hexdigest() for k, v in sorted(inline_files.items())},
+            "inline_files": {
+                k: hashlib.sha256(v.encode("utf-8")).hexdigest()
+                for k, v in sorted(inline_files.items())
+            },
             "pip_platform": pip_platform,
             "pip_python_version": pip_python_version,
         },
