@@ -5,5 +5,10 @@ output "layer_arns" {
 
 output "layer_ssm_parameter_arns" {
   description = "ARNs of the per-variant, per-region SSM parameters, keyed 'variant/region'."
-  value       = { for k, p in aws_ssm_parameter.layer_arn : k => p.arn }
+  value = merge([
+    for variant, m in module.layer_ssm : {
+      for region, arn in m.ssm_parameter_arns :
+      "${variant}/${region}" => arn
+    }
+  ]...)
 }
