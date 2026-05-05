@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1](https://github.com/acai-solutions/terraform-aws-acf-observability/compare/1.0.0...1.0.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* 1.0.1 ([#2](https://github.com/acai-solutions/terraform-aws-acf-observability/issues/2)) ([e3235d9](https://github.com/acai-solutions/terraform-aws-acf-observability/commit/e3235d9842cece2ec537b27b3965f695920d16ee))
+
 ## 1.0.0 (2026-04-23)
 
 
