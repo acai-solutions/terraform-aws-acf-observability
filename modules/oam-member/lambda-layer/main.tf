@@ -50,9 +50,9 @@ module "layer" {
     # Hardcoded: this wrapper builds a fixed-purpose "platform logging" layer, not a generic one.
     # Only modules that are actually vendored under modules-external/acai-powertools/lib/acai/
     # may be listed here — anything else triggers "Skipping missing module" warnings at build time.
-    acai_modules     = ["logging"]
-    pip_requirements = ["aws-lambda-powertools==2.43.1"]
-    inline_files     = local.inline_files
+    acai_modules             = ["logging"]
+    pip_requirements         = ["aws-lambda-powertools==2.43.1"]
+    inline_files             = local.inline_files
   }
 
   regions = var.regions
