@@ -283,7 +283,10 @@ def _inputs_fingerprint(
         {
             "modules": sorted(modules) if modules else [],
             "requirements": sorted(requirements_specs),
-            "inline_files": {k: hashlib.sha256(v.encode("utf-8")).hexdigest() for k, v in sorted(inline_files.items())},
+            "inline_files": {
+                k: hashlib.sha256(v.encode("utf-8")).hexdigest()
+                for k, v in sorted(inline_files.items())
+            },
             "pip_platform": pip_platform,
             "pip_python_version": pip_python_version,
         },
@@ -619,7 +622,9 @@ def main() -> None:
         # invokes the same layer module across many provider/account contexts)
         # can skip rebuilding when the zip already reflects identical inputs.
         modules_for_fp = (
-            None if args.no_acai else (_select_modules(args) if args.modules or not args.list else None)
+            None
+            if args.no_acai
+            else (_select_modules(args) if args.modules or not args.list else None)
         )
         requirements_specs: list[str] = []
         if args.requirements:
@@ -636,7 +641,9 @@ def main() -> None:
                 with contextlib.suppress(json.JSONDecodeError):
                     parsed = json.loads(inline_json)
                     if isinstance(parsed, dict):
-                        inline_files_map = {k: v for k, v in parsed.items() if isinstance(v, str)}
+                        inline_files_map = {
+                            k: v for k, v in parsed.items() if isinstance(v, str)
+                        }
 
         fingerprint = _inputs_fingerprint(
             modules_for_fp,
@@ -649,12 +656,12 @@ def main() -> None:
         lock_path = Path(str(args.output) + ".lock")
 
         with _build_lock(lock_path):
-            existing_fp = fingerprint_path.read_text(encoding="utf-8").strip() if fingerprint_path.exists() else ""
-            if (
-                args.output.exists()
-                and existing_fp == fingerprint
-                and not args.no_zip
-            ):
+            existing_fp = (
+                fingerprint_path.read_text(encoding="utf-8").strip()
+                if fingerprint_path.exists()
+                else ""
+            )
+            if args.output.exists() and existing_fp == fingerprint and not args.no_zip:
                 print(
                     f"Reusing existing layer zip ({args.output.name}); inputs unchanged "
                     f"and another concurrent build already produced it."
