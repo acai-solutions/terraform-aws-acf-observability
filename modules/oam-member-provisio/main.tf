@@ -33,7 +33,7 @@ locals {
         "module_name"     = "terraform-aws-acf-observability",
         "module_source"   = "github.com/acai-solutions/terraform-aws-acf-observability",
         "module_feature"  = "oam-member",
-        "module_version"  = /*inject_version_start*/ "1.1.0" /*inject_version_end*/
+        "module_version"  = /*inject_version_start*/ "1.2.0" /*inject_version_end*/
       }
     )
   })

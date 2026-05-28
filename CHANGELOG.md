@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0](https://github.com/acai-solutions/terraform-aws-acf-observability/compare/1.1.0...1.2.0) (2026-05-28)
+
+
+### Features
+
+* add PROVISIO support ([#4](https://github.com/acai-solutions/terraform-aws-acf-observability/issues/4)) ([77f8595](https://github.com/acai-solutions/terraform-aws-acf-observability/commit/77f859579dd7b6ed5e7fd9719501f168252599fc))
+
 ## [1.1.0](https://github.com/acai-solutions/terraform-aws-acf-observability/compare/1.0.1...1.1.0) (2026-05-05)
 
 
