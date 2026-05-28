@@ -129,9 +129,9 @@ data "aws_iam_policy_document" "cw_cross_account_list_accounts" {
 
   statement {
     # checkov:skip=CKV_AWS_356: organizations:Describe*/List* actions do not support resource-level permissions
-    sid       = "OrganizationsReadOnly"
-    effect    = "Allow"
-    actions   = [
+    sid    = "OrganizationsReadOnly"
+    effect = "Allow"
+    actions = [
       "organizations:Describe*",
       "organizations:List*"
     ]
