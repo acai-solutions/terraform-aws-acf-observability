@@ -102,4 +102,27 @@ data "aws_iam_policy_document" "oam_sink_policy" {
     ]
     resources = ["*"]
   }
+
+  statement {
+    sid    = "AllowCwCrossAccountV2RoleManagement"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:ListRoleTags",
+      "iam:PutRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+    ]
+    resources = [
+      "arn:aws:iam::*:role/service-role/ServiceRoleForCloudWatchCrossAccountV2",
+    ]
+  }
 }
