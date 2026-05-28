@@ -1,0 +1,72 @@
+      Policies:
+        - PolicyName: ObservabilityOamMemberPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Read access required by Terraform for plan/refresh.
+              # iam:Get/List kept broad because Terraform refresh inspects unrelated roles too.
+              - Sid: AllowRead
+                Effect: Allow
+                Action:
+                  - 'iam:Get*'
+                  - 'iam:List*'
+                  - 'tag:GetResources'
+                Resource: '*'
+
+              # CloudWatch Observability Access Manager (OAM) - member-side links to central monitoring sink
+              - Sid: AllowOamLinkManagement
+                Effect: Allow
+                Action:
+                  - 'oam:CreateLink'
+                  - 'oam:UpdateLink'
+                  - 'oam:DeleteLink'
+                  - 'oam:GetLink'
+                  - 'oam:ListLinks'
+                  - 'oam:ListAttachedLinks'
+                  - 'oam:TagResource'
+                  - 'oam:UntagResource'
+                  - 'oam:ListTagsForResource'
+                Resource: '*'
+
+              # Per-service :Link permissions required by OAM CreateLink for each shared resource type
+              - Sid: AllowOamLinkResourceTypes
+                Effect: Allow
+                Action:
+                  - 'cloudwatch:Link'
+                  - 'logs:Link'
+                  - 'xray:Link'
+                  - 'application-signals:Link'
+                  - 'applicationinsights:Link'
+                  - 'internetmonitor:Link'
+                Resource: '*'
+
+              # Service-linked role required by OAM on first link creation
+              - Sid: AllowOamServiceLinkedRole
+                Effect: Allow
+                Action:
+                  - 'iam:CreateServiceLinkedRole'
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    iam:AWSServiceName: 'oam.amazonaws.com'
+
+              # CloudWatch-CrossAccountSharingRole lifecycle (created by oam-member-terraform).
+              # Mutating IAM actions are scoped to the exact role name.
+              - Sid: AllowCwCrossAccountSharingRoleManagement
+                Effect: Allow
+                Action:
+                  - 'iam:CreateRole'
+                  - 'iam:DeleteRole'
+                  - 'iam:UpdateAssumeRolePolicy'
+                  - 'iam:TagRole'
+                  - 'iam:UntagRole'
+                  - 'iam:PutRolePolicy'
+                  - 'iam:DeleteRolePolicy'
+                Resource: 'arn:aws:iam::*:role/CloudWatch-CrossAccountSharingRole'
+
+              # Required by data.aws_organizations_organization (used to detect the Org Mgmt account).
+              - Sid: AllowDescribeOrganization
+                Effect: Allow
+                Action:
+                  - 'organizations:DescribeOrganization'
+                Resource: '*'

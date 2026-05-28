@@ -36,6 +36,9 @@ $${resource_tags_block}
                   - cloudwatch:Link
                   - logs:Link
                   - xray:Link
+                  - application-signals:Link
+                  - applicationinsights:Link
+                  - internetmonitor:Link
                 Resource: "*"
               - Sid: AllowLambdaLayerManagement
                 Effect: Allow
@@ -61,10 +64,39 @@ $${resource_tags_block}
                   - ssm:RemoveTagsFromResource
                   - ssm:ListTagsForResource
                 Resource: "*"
-              - Sid: AllowIamReadOnly
+              # CloudWatch-CrossAccountSharingRole lifecycle (created by oam-member-terraform).
+              - Sid: AllowCwCrossAccountSharingRoleManagement
                 Effect: Allow
                 Action:
-                  - iam:Get*
-                  - iam:List*
-                  - iam:CreateServiceLinkedRole
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:ListRoleTags
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListInstanceProfilesForRole
+                Resource: 
+                  - "arn:aws:iam::*:role/CloudWatch-CrossAccountSharingRole"
+                  - "arn:aws:iam::*:role/CloudWatch-CrossAccountSharing-ListAccountsRole"                  
+              # Required for the aws_organizations_organization data source used to
+              # detect whether we are running in the Org Management account.
+              - Sid: AllowDescribeOrganization
+                Effect: Allow
+                Action:
+                  - organizations:Describe*
+                  - organizations:List*
                 Resource: "*"
+              # oam:CreateLink triggers creation of the OAM service-linked role on first use.
+              - Sid: AllowOamServiceLinkedRole
+                Effect: Allow
+                Action:
+                  - iam:CreateServiceLinkedRole
+                Resource: "arn:aws:iam::*:role/aws-service-role/oam.amazonaws.com/*"

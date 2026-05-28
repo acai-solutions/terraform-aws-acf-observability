@@ -61,7 +61,7 @@ module "oam_sink" {
 # ¦ OAM MEMBER 1 — linked to sink, deploys two demo lambdas
 # ---------------------------------------------------------------------------------------------------------------------
 module "oam_member_1" {
-  source = "../../modules/oam-member"
+  source = "../../modules/oam-member-terraform"
 
   settings = {
     aws_regions = local.regions
@@ -81,7 +81,7 @@ module "oam_member_1" {
 }
 
 module "member_1_worker" {
-  source      = "./member-worker"
+  source      = "../member-worker"
   member_name = "member-1"
   layer_arn   = module.oam_member_1.layer_arns["python312-arm64"][var.aws_region]
   providers = {
@@ -90,7 +90,7 @@ module "member_1_worker" {
 }
 
 module "member_1_worker_secondary" {
-  source      = "./member-worker"
+  source      = "../member-worker"
   member_name = "member-1-secondary"
   layer_arn   = module.oam_member_1.layer_arns["python312-arm64"][local.regions.secondary[0]]
   providers = {
@@ -102,7 +102,7 @@ module "member_1_worker_secondary" {
 # ¦ OAM MEMBER 2 — linked to sink, deploys two demo lambdas
 # ---------------------------------------------------------------------------------------------------------------------
 module "oam_member_2" {
-  source = "../../modules/oam-member"
+  source = "../../modules/oam-member-terraform"
 
   settings = {
     aws_regions = local.regions
@@ -122,7 +122,7 @@ module "oam_member_2" {
 }
 
 module "member_2_worker" {
-  source      = "./member-worker"
+  source      = "../member-worker"
   member_name = "member-2"
   layer_arn   = module.oam_member_2.layer_arns["python312-arm64"][var.aws_region]
   providers = {
@@ -131,7 +131,7 @@ module "member_2_worker" {
 }
 
 module "member_2_worker_secondary" {
-  source      = "./member-worker"
+  source      = "../member-worker"
   member_name = "member-2-secondary"
   layer_arn   = module.oam_member_2.layer_arns["python312-arm64"][local.regions.secondary[0]]
   providers = {

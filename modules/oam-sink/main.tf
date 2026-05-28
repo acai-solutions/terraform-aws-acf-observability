@@ -11,6 +11,15 @@ terraform {
     }
   }
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# ¦ DATA
+# ---------------------------------------------------------------------------------------------------------------------
+data "aws_caller_identity" "current" {}
+
+data "aws_organizations_organization" "current" {}
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 # ¦ LOCALS
 # ---------------------------------------------------------------------------------------------------------------------
@@ -29,6 +38,15 @@ locals {
     [var.settings.aws_regions.primary],
     var.settings.aws_regions.secondary
   ))
+
+  # Trust the whole AWS Organization on the sink resource policy when explicitly requested.
+  # trusted_account_ids is independent: it always drives the drill-down dashboard's account selector,
+  # even when org-wide trust is enabled (e.g. to highlight "core" accounts).
+  trust_whole_org = var.settings.oam.allow_full_organization
+}
+
+data "aws_organizations_organization" "this" {
+  count = local.trust_whole_org ? 1 : 0
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -51,7 +69,16 @@ data "aws_iam_policy_document" "oam_sink" {
 
     principals {
       type        = "AWS"
-      identifiers = var.settings.oam.trusted_account_ids
+      identifiers = local.trust_whole_org ? ["*"] : var.settings.oam.trusted_account_ids
+    }
+
+    dynamic "condition" {
+      for_each = local.trust_whole_org ? [1] : []
+      content {
+        test     = "StringEquals"
+        variable = "aws:PrincipalOrgID"
+        values   = [data.aws_organizations_organization.this[0].id]
+      }
     }
 
     condition {
@@ -79,6 +106,65 @@ resource "aws_oam_sink_policy" "this" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
+# ¦ CLOUDWATCH CROSS-ACCOUNT — MONITORING-ACCOUNT SERVICE ROLE
+# ¦ Assumed by the CloudWatch service in this (monitoring) account to call the
+# ¦ CloudWatch-CrossAccountSharing* roles in every source account in the org.
+# ---------------------------------------------------------------------------------------------------------------------
+data "aws_iam_policy_document" "cw_cross_account_v2_trust" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect  = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["cloudwatch-crossaccount.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudwatch:*:${data.aws_caller_identity.current.account_id}:*"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "cw_cross_account_v2" {
+  statement {
+    sid       = "AssumeCrossAccountSharingRoles"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = ["arn:aws:iam::*:role/CloudWatch-CrossAccountSharing*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceOrgId"
+      values   = [data.aws_organizations_organization.current.id]
+    }
+  }
+}
+
+resource "aws_iam_role" "cw_cross_account_v2" {
+  count = var.create_cw_cross_account_v2_role ? 1 : 0
+
+  name               = "ServiceRoleForCloudWatchCrossAccountV2"
+  path               = "/service-role/"
+  description        = "Allows CloudWatch to assume CloudWatch-CrossAccountSharing roles in remote accounts on behalf of the current account in order to display data cross-account, cross region"
+  assume_role_policy = data.aws_iam_policy_document.cw_cross_account_v2_trust.json
+  tags               = local.resource_tags
+}
+
+resource "aws_iam_role_policy" "cw_cross_account_v2" {
+  count = var.create_cw_cross_account_v2_role ? 1 : 0
+
+  name   = "CloudWatchCrossAccountAccess-Organization"
+  role   = aws_iam_role.cw_cross_account_v2[0].name
+  policy = data.aws_iam_policy_document.cw_cross_account_v2.json
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
 # ¦ CLOUDWATCH DASHBOARDS
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_cloudwatch_dashboard" "lambda_overview" {
@@ -88,6 +174,8 @@ resource "aws_cloudwatch_dashboard" "lambda_overview" {
 }
 
 resource "aws_cloudwatch_dashboard" "lambda_drilldown" {
+  count = length(local.trusted_account_ids_unique) > 0 ? 1 : 0
+
   dashboard_name = "${var.settings.oam.sink_name}-lambda-drilldown"
 
   dashboard_body = local.drilldown_dashboard_body
@@ -97,11 +185,11 @@ resource "aws_cloudwatch_dashboard" "lambda_drilldown" {
 # ¦ CLOUDWATCH LOG INSIGHTS — Saved Queries
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_cloudwatch_query_definition" "lambda_errors" {
-  name            = "Lambda/Cross-Account Errors"
-  log_group_names = ["/aws/lambda"]
+  name = "Lambda/Cross-Account Errors"
 
   query_string = <<-EOT
-    filter @message like /ERROR|Exception|Task timed out/
+    SOURCE logGroups(namePrefix: ["/aws/lambda/"])
+    | filter @message like /ERROR|Exception|Task timed out/
     | fields @timestamp, @logStream, @log, @message
     | sort @timestamp desc
     | limit 200
@@ -109,22 +197,22 @@ resource "aws_cloudwatch_query_definition" "lambda_errors" {
 }
 
 resource "aws_cloudwatch_query_definition" "lambda_error_frequency" {
-  name            = "Lambda/Error Frequency (5m bins)"
-  log_group_names = ["/aws/lambda"]
+  name = "Lambda/Error Frequency (5m bins)"
 
   query_string = <<-EOT
-    filter @message like /ERROR|Exception|Task timed out/
+    SOURCE logGroups(namePrefix: ["/aws/lambda/"])
+    | filter @message like /ERROR|Exception|Task timed out/
     | stats count(*) as error_count by bin(5m)
     | sort @timestamp desc
   EOT
 }
 
 resource "aws_cloudwatch_query_definition" "lambda_slow_executions" {
-  name            = "Lambda/Slow Executions (>10s)"
-  log_group_names = ["/aws/lambda"]
+  name = "Lambda/Slow Executions (>10s)"
 
   query_string = <<-EOT
-    filter @duration > 10000
+    SOURCE logGroups(namePrefix: ["/aws/lambda/"])
+    | filter @duration > 10000
     | fields @timestamp, @logStream, @log, @duration, @billedDuration, @memorySize, @maxMemoryUsed
     | sort @duration desc
     | limit 100
@@ -132,11 +220,11 @@ resource "aws_cloudwatch_query_definition" "lambda_slow_executions" {
 }
 
 resource "aws_cloudwatch_query_definition" "lambda_cold_starts" {
-  name            = "Lambda/Cold Starts"
-  log_group_names = ["/aws/lambda"]
+  name = "Lambda/Cold Starts"
 
   query_string = <<-EOT
-    filter @type = "REPORT" and @initDuration > 0
+    SOURCE logGroups(namePrefix: ["/aws/lambda/"])
+    | filter @type = "REPORT" and @initDuration > 0
     | fields @timestamp, @logStream, @log, @initDuration, @duration, @memorySize, @maxMemoryUsed
     | sort @initDuration desc
     | limit 100
@@ -144,11 +232,11 @@ resource "aws_cloudwatch_query_definition" "lambda_cold_starts" {
 }
 
 resource "aws_cloudwatch_query_definition" "lambda_timeouts" {
-  name            = "Lambda/Timeouts"
-  log_group_names = ["/aws/lambda"]
+  name = "Lambda/Timeouts"
 
   query_string = <<-EOT
-    filter @message like /Task timed out/
+    SOURCE logGroups(namePrefix: ["/aws/lambda/"])
+    | filter @message like /Task timed out/
     | fields @timestamp, @logStream, @log, @message
     | sort @timestamp desc
     | limit 100
@@ -156,11 +244,11 @@ resource "aws_cloudwatch_query_definition" "lambda_timeouts" {
 }
 
 resource "aws_cloudwatch_query_definition" "lambda_memory_usage" {
-  name            = "Lambda/Memory Usage (Top Consumers)"
-  log_group_names = ["/aws/lambda"]
+  name = "Lambda/Memory Usage (Top Consumers)"
 
   query_string = <<-EOT
-    filter @type = "REPORT"
+    SOURCE logGroups(namePrefix: ["/aws/lambda/"])
+    | filter @type = "REPORT"
     | stats max(@maxMemoryUsed / @memorySize * 100) as max_memory_pct,
             avg(@maxMemoryUsed / @memorySize * 100) as avg_memory_pct
       by @logStream
@@ -170,11 +258,11 @@ resource "aws_cloudwatch_query_definition" "lambda_memory_usage" {
 }
 
 resource "aws_cloudwatch_query_definition" "lambda_cost_drivers" {
-  name            = "Lambda/Cost Drivers (Duration x Memory)"
-  log_group_names = ["/aws/lambda"]
+  name = "Lambda/Cost Drivers (Duration x Memory)"
 
   query_string = <<-EOT
-    filter @type = "REPORT"
+    SOURCE logGroups(namePrefix: ["/aws/lambda/"])
+    | filter @type = "REPORT"
     | stats sum(@billedDuration) as total_billed_ms,
             count(*) as invocation_count,
             avg(@maxMemoryUsed) as avg_memory_used

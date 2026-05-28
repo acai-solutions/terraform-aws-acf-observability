@@ -1,0 +1,3 @@
+%{ for region in all_regions ~}
+terraform import 'module.${tf_module_name}.aws_oam_link.this_${lower(replace(region, "-", "_"))}' <OAM_LINK_ARN_${upper(replace(region, "-", "_"))}>
+%{ endfor }

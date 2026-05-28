@@ -78,6 +78,9 @@ data "aws_iam_policy_document" "oam_member_policy" {
       "cloudwatch:Link",
       "logs:Link",
       "xray:Link",
+      "application-signals:Link",
+      "applicationinsights:Link",
+      "internetmonitor:Link",
     ]
     resources = ["*"]
   }
