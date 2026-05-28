@@ -93,4 +93,13 @@ data "aws_iam_policy_document" "oam_sink_policy" {
     ]
     resources = ["*"]
   }
+
+  statement {
+    sid    = "AllowOrganizationsDescribe"
+    effect = "Allow"
+    actions = [
+      "organizations:DescribeOrganization",
+    ]
+    resources = ["*"]
+  }
 }
