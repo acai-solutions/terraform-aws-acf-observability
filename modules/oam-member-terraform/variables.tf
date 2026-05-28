@@ -5,12 +5,12 @@ variable "settings" {
       primary   = string
       secondary = list(string)
     })
-    oam = object({
+    oam = optional(object({
       sink_identifiers = map(string)
       resource_types   = optional(list(string), ["AWS::CloudWatch::Metric", "AWS::Logs::LogGroup", "AWS::XRay::Trace"])
       log_group_filter = optional(string, null)
       metric_filter    = optional(string, null)
-    })
+    }), null)
     lambda_layer = optional(object({
       layer_base_name      = string
       runtimes             = list(string)
@@ -20,7 +20,6 @@ variable "settings" {
     }), null)
   })
 }
-
 
 # ---------------------------------------------------------------------------------------------------------------------
 # ¦ COMMON

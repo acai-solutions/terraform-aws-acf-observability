@@ -80,7 +80,7 @@ locals {
           height = 12
           properties = {
             title         = "Log Errors by Region"
-            query         = "filter level = 'ERROR' or @message like /ERROR/ | stats count(*) as error_count by aws_region | sort error_count desc"
+            query         = "fields @timestamp, aws_region\n| filter tolower(level) = \"error\" or @message like /ERROR/\n| stats count(*) as error_count by aws_region\n| sort error_count desc"
             region        = var.settings.aws_regions.primary
             logGroupNames = data.aws_cloudwatch_log_groups.lambda.log_group_names
             view          = "table"
@@ -94,7 +94,7 @@ locals {
           height = 12
           properties = {
             title         = "Log Invocations by Region (5m bins)"
-            query         = "stats count(*) as invocations by aws_region, bin(5m) | sort invocations desc"
+            query         = "fields @timestamp, aws_region\n| stats count(*) as invocations by aws_region, bin(5m)\n| sort invocations desc"
             region        = var.settings.aws_regions.primary
             logGroupNames = data.aws_cloudwatch_log_groups.lambda.log_group_names
             view          = "timeSeries"
@@ -166,7 +166,7 @@ locals {
         inputType    = "select"
         id           = "accountId"
         label        = "Account"
-        defaultValue = local.trusted_account_ids_unique[0]
+        defaultValue = try(local.trusted_account_ids_unique[0], "")
         visible      = true
         values = [
           for a in local.trusted_account_ids_unique : { value = a, label = a }

@@ -28,7 +28,7 @@ terraform {
 # ¦ LAMBDA: SUCCESS — returns a normal response
 # ---------------------------------------------------------------------------------------------------------------------
 module "lambda_success" {
-  source = "../../../modules-external/terraform-aws-lambda"
+  source = "../../modules-external/terraform-aws-lambda"
 
   lambda_settings = {
     function_name  = "acf-obs-demo-success-${var.member_name}"
@@ -50,7 +50,7 @@ module "lambda_success" {
 # ¦ LAMBDA: ERROR — raises an exception to trigger CloudWatch error metrics
 # ---------------------------------------------------------------------------------------------------------------------
 module "lambda_error" {
-  source = "../../../modules-external/terraform-aws-lambda"
+  source = "../../modules-external/terraform-aws-lambda"
 
   lambda_settings = {
     function_name  = "acf-obs-demo-error-${var.member_name}"

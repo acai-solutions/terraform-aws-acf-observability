@@ -35,6 +35,11 @@ $${resource_tags_block}
                   - oam:UntagResource
                   - oam:ListTagsForResource
                 Resource: "*"
+              - Sid: AllowDescribeOrganization
+                Effect: Allow
+                Action:
+                  - organizations:DescribeOrganization
+                Resource: "*"
               - Sid: AllowCloudWatchDashboard
                 Effect: Allow
                 Action:
@@ -54,3 +59,15 @@ $${resource_tags_block}
                   - iam:List*
                   - iam:CreateServiceLinkedRole
                 Resource: "*"
+              # ServiceRoleForCloudWatchCrossAccountV2 lifecycle (created by oam-sink module).
+              - Sid: AllowCwCrossAccountV2RoleManagement
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                Resource: "arn:aws:iam::*:role/service-role/ServiceRoleForCloudWatchCrossAccountV2"

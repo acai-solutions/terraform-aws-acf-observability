@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# ¦ DATA
+# ---------------------------------------------------------------------------------------------------------------------
+data "aws_caller_identity" "current" {}
+
+data "aws_organizations_organization" "current" {}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# ¦ LOCALS
+# ---------------------------------------------------------------------------------------------------------------------
+locals {
+  tags = {
+${resource_tags}
+  }
+}
+
+%{ for region in concat([primary_region], secondary_regions) ~}
+# ---------------------------------------------------------------------------------------------------------------------
+# ¦ OAM LINK — ${region}
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_oam_link" "this_${lower(replace(region, "-", "_"))}" {
+  sink_identifier = "${sink_identifiers[region]}"
+  label_template  = "$AccountName"
+  resource_types  = ${jsonencode(resource_types)}
+
+%{ if log_group_filter != null || metric_filter != null ~}
+  link_configuration {
+%{ if log_group_filter != null ~}
+    log_group_configuration {
+      filter = ${jsonencode(log_group_filter)}
+    }
+%{ endif ~}
+%{ if metric_filter != null ~}
+    metric_configuration {
+      filter = ${jsonencode(metric_filter)}
+    }
+%{ endif ~}
+  }
+%{ endif ~}
+
+  tags     = local.tags
+  provider = aws.${lower(replace(region, "-", "_"))}
+}
+
+%{ endfor ~}
+# ---------------------------------------------------------------------------------------------------------------------
+# ¦ CLOUDWATCH CROSS-ACCOUNT — ORG MGMT ONLY
+# ¦ In the Org Management account, a role with a fixed name is required so the
+# ¦ CloudWatch monitoring console can list organization accounts and populate
+# ¦ the account selector.
+# ---------------------------------------------------------------------------------------------------------------------
+locals {
+  is_org_management_account = data.aws_caller_identity.current.account_id == data.aws_organizations_organization.current.master_account_id
+}
+
+resource "aws_iam_role" "cw_cross_account_list_accounts" {
+  count = local.is_org_management_account ? 1 : 0
+
+  name               = "CloudWatch-CrossAccountSharing-ListAccountsRole"
+  assume_role_policy = data.aws_iam_policy_document.cw_cross_account_list_accounts_trust[0].json
+  tags               = local.tags
+}
+
+# Trust policy per AWS Support: monitoring account root.
+data "aws_iam_policy_document" "cw_cross_account_list_accounts_trust" {
+  count = local.is_org_management_account ? 1 : 0
+
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect  = "Allow"
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${monitoring_account_id}:root"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "cw_cross_account_list_accounts" {
+  count = local.is_org_management_account ? 1 : 0
+
+  statement {
+    effect    = "Allow"
+    actions   = ["organizations:ListAccounts", "organizations:ListAccountsForParent"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "cw_cross_account_list_accounts" {
+  count = local.is_org_management_account ? 1 : 0
+
+  name   = "CloudWatch-CrossAccountSharing-ListAccounts-Policy"
+  role   = aws_iam_role.cw_cross_account_list_accounts[0].name
+  policy = data.aws_iam_policy_document.cw_cross_account_list_accounts[0].json
+}
