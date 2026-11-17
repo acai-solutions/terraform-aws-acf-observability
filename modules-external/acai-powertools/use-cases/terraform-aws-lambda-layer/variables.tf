@@ -102,8 +102,24 @@ variable "regions" {
 # ---------------------------------------------------------------------------------------------------------------------
 # ¦ COMMON
 # ---------------------------------------------------------------------------------------------------------------------
+variable "create_product_version_ssm_parameter" {
+  description = "Whether to create the SSM parameter for the product version. Set to false when multiple instances of this module share the same module_context to avoid TooManyUpdates errors."
+  type        = bool
+  default     = true
+}
+
+variable "module_context" {
+  description = "Infix naming the consuming module, used to namespace the product-version SSM parameter: /acai/<module_context>powertools/productversion. If provided, must end with '/', e.g. \"semper/\" or \"semper/accountcache/\". Defaults to \"\" (legacy shared name /acai/powertools/productversion); set it whenever several pipelines deploy powertools into the same account."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.module_context == "" || (endswith(var.module_context, "/") && can(regex("^[A-Za-z0-9_\\-/]+$", var.module_context)) && !can(regex("\\.\\.", var.module_context)) && !startswith(var.module_context, "/"))
+    error_message = "If module_context is provided, it must end with '/', must not start with '/', must not contain '..', and may only use [A-Za-z0-9_-/] characters."
+  }
+}
+
 variable "ssm_parameter_prefix" {
-  description = "Optional prefix for SSM parameter holding the module version."
+  description = "DEPRECATED - use module_context instead; will be removed in the next major version. Optional prefix placed in front of the SSM parameter holding the module version."
   type        = string
   default     = ""
 }

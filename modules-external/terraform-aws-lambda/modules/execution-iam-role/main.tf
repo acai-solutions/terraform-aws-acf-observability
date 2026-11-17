@@ -47,8 +47,10 @@ locals {
     element(reverse(split("/", var.execution_iam_role_settings.existing_iam_role_arn)), 0)
   )
 
+  # Constructed (not aws_iam_role.execution_role[0].arn) to keep the ARN known at plan time
+  # and avoid cascading "known after apply" through downstream consumers.
   execution_iam_role_arn = local.create_new_execution_iam_role ? (
-    replace("arn:${var.runtime_configuration.partition_name}:iam::${var.runtime_configuration.account_id}:role/${trim(local.new_execution_iam_role.path, "/")}/${local.new_execution_iam_role_name}", "////", "/")
+    "arn:${var.runtime_configuration.partition_name}:iam::${var.runtime_configuration.account_id}:role${local.new_execution_iam_role.path}${local.new_execution_iam_role_name}"
     ) : (
     var.execution_iam_role_settings.existing_iam_role_arn
   )

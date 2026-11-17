@@ -79,7 +79,7 @@ resource "aws_sqs_queue_policy" "lambda_trigger" {
         "Sid" : "ManagementPermissions",
         "Effect" : "Allow",
         "Action" : "sqs:*",
-        "Resource" : "*",
+        "Resource" : aws_sqs_queue.lambda_trigger[0].arn,
         "Principal" : {
           "AWS" : local.account_arn
         }
@@ -91,7 +91,7 @@ resource "aws_sqs_queue_policy" "lambda_trigger" {
         "Principal" : {
           "Service" : "sns.amazonaws.com"
         },
-        "Resource" : "*",
+        "Resource" : aws_sqs_queue.lambda_trigger[0].arn,
         "Condition" : {
           "ArnLike" : {
             "aws:SourceArn" : [
@@ -122,7 +122,7 @@ data "aws_iam_policy_document" "lambda_trigger_policy" {
       type        = "AWS"
       identifiers = [local.account_arn]
     }
-    resources = ["*"]
+    resources = [aws_sqs_queue.lambda_trigger[0].arn]
   }
 
   dynamic "statement" {
@@ -134,7 +134,7 @@ data "aws_iam_policy_document" "lambda_trigger_policy" {
         type        = "Service"
         identifiers = ["sns.amazonaws.com"]
       }
-      resources = ["*"]
+      resources = [aws_sqs_queue.lambda_trigger[0].arn]
       condition {
         test     = "ArnLike"
         variable = "aws:SourceArn"
@@ -218,7 +218,8 @@ resource "aws_cloudwatch_event_target" "pattern" {
   # And applied here as well
   for_each = { for rule in try(var.trigger_settings.event_rules, []) : rule.name => rule }
 
-  target_id = "attach_schedule_to_lambda"
-  rule      = aws_cloudwatch_event_rule.pattern[each.key].name
-  arn       = var.runtime_configuration.lambda_arn
+  target_id      = "attach_schedule_to_lambda"
+  rule           = aws_cloudwatch_event_rule.pattern[each.key].name
+  event_bus_name = each.value.event_bus_name
+  arn            = var.runtime_configuration.lambda_arn
 }

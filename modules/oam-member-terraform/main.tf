@@ -43,6 +43,13 @@ locals {
 # ---------------------------------------------------------------------------------------------------------------------
 # ¦ OAM LINK — connect this member account to the central sink in every region
 # ---------------------------------------------------------------------------------------------------------------------
+# Changing settings.oam.link_replace_trigger recreates the links. Needed to remove a link_configuration:
+# the provider omits LinkConfiguration from UpdateLink when the block is removed and AWS keeps the old filter
+# (permanent diff). Adding this resource with the trigger unset does not touch existing links.
+resource "terraform_data" "link_replace" {
+  triggers_replace = try(var.settings.oam.link_replace_trigger, null)
+}
+
 resource "aws_oam_link" "this" {
   for_each = var.settings.oam == null ? toset([]) : local.all_regions
 
@@ -70,6 +77,10 @@ resource "aws_oam_link" "this" {
   }
 
   tags = local.resource_tags
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.link_replace]
+  }
 }
 
 # ---------------------------------------------------------------------------------------------------------------------

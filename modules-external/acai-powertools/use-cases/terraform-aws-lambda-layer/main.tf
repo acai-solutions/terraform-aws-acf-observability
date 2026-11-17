@@ -10,6 +10,11 @@ terraform {
       version               = ">= 6.0"
       configuration_aliases = []
     }
+    external = {
+      source  = "hashicorp/external"
+      version = ">= 2.3"
+    }
+    # Still needed to drop the former null_resource.build_layer from existing states.
     null = {
       source  = "hashicorp/null"
       version = ">= 3.0"
@@ -29,17 +34,34 @@ locals {
     }
   )
   aws_ssm_parameter_prefix = var.ssm_parameter_prefix == "" ? "" : "/${lower(var.ssm_parameter_prefix)}"
-  solution_version         = "1.0.9"
+  solution_version         = "1.0.10"
 }
 resource "aws_ssm_parameter" "product_version" {
+  # The parameter name is namespaced per consuming module via
+  # var.module_context (e.g. /acai/semper/powertools/productversion), so
+  # different pipelines (SEMPER, PROVISIO, IDC, account-cache, ...) deploying
+  # into the same account no longer fight over one shared parameter.
+  # With the default module_context = "" the legacy shared name
+  # /acai/powertools/productversion is kept (backward compatible).
+  # If the module is instantiated more than once with the same
+  # module_context in one workspace, disable the parameter on all but one
+  # instance via `create_product_version_ssm_parameter = false`.
+  count = var.create_product_version_ssm_parameter ? 1 : 0
+
   #checkov:skip=CKV2_AWS_34: AWS SSM Parameter should be Encrypted not required for module version
   # Note: this parameter is created in the provider's default region only,
   # even when var.regions is used to publish the layer in multiple regions.
-  name           = "${local.aws_ssm_parameter_prefix}/acai/powertools/productversion"
+  name           = lower("${local.aws_ssm_parameter_prefix}/acai/${var.module_context}powertools/productversion")
   type           = "String"
   insecure_value = local.solution_version
   overwrite      = true
   tags           = local.resource_tags
+}
+
+# Keep existing states (created before the count toggle) without destroy/create of the parameter.
+moved {
+  from = aws_ssm_parameter.product_version
+  to   = aws_ssm_parameter.product_version[0]
 }
 
 
@@ -52,19 +74,22 @@ locals {
   # Build artefacts live under path.root (the consumer workspace) instead of
   # path.module (which lives inside .terraform/modules/ and gets wiped by
   # `terraform init` in CI apply stages).
-  # IMPORTANT: abspath() is required because the provisioner runs with
-  # working_dir = path.module, so relative paths would resolve against the
-  # module directory, not the root module directory. The resource's `filename`
-  # attribute, however, resolves relative to the root module. Using absolute
-  # paths ensures both the build script and the resource reference the same file.
+  # The build script gets absolute paths (independent of its working directory).
   layer_source_folder       = "${abspath(path.root)}/.layer-build/${var.layer_settings.layer_name}"
   zip_folder                = "${abspath(path.root)}/.layer-build"
   acai_powertools_layer_zip = "${local.zip_folder}/${var.layer_settings.layer_name}.zip"
 
+  # The layer version gets the same file as a path relative to the root module.
+  # `filename` forces a new layer version when it changes, so it must not contain
+  # the workspace location: an absolute path differs between CI agents
+  # (/home/vsts/... vs /home/runner/..., work folder numbers, local runs) and would
+  # replace the layer - and update every Lambda using it - without any real change.
+  # A saved plan would also carry the plan agent's path to the apply agent.
+  layer_zip_filename = "${path.root}/.layer-build/${var.layer_settings.layer_name}.zip"
+
   is_windows = length(regexall("^[A-Za-z]:[\\\\/]", abspath(path.module))) > 0
 
   has_acai_modules = length(var.layer_settings.acai_modules) > 0
-  modules_arg      = local.has_acai_modules ? "--modules ${join(" ", var.layer_settings.acai_modules)} --resolve-deps" : "--no-acai"
 
   # Hash of the acai source tree so layer rebuilds when library code changes.
   acai_source_dir = "${path.module}/../../lib/acai"
@@ -85,15 +110,19 @@ locals {
   pip_requirements      = var.layer_settings.pip_requirements
   has_pip_requirements  = length(local.pip_requirements) > 0
   pip_requirements_json = local.has_pip_requirements ? jsonencode(local.pip_requirements) : ""
-  pip_req_arg           = local.has_pip_requirements ? "--requirements" : ""
-  pip_platform_arg      = local.has_pip_requirements && local.pip_platform != null ? "--pip-platform ${local.pip_platform}" : ""
-  pip_version_arg       = local.has_pip_requirements && local.pip_python_version != null ? "--pip-python-version ${local.pip_python_version}" : ""
-  pip_args              = trimspace("${local.pip_req_arg} ${local.pip_platform_arg} ${local.pip_version_arg}")
   pip_requirements_hash = local.has_pip_requirements ? md5(local.pip_requirements_json) : ""
 
   has_inline_files  = length(var.layer_settings.inline_files) > 0
   inline_files_json = local.has_inline_files ? jsonencode(var.layer_settings.inline_files) : ""
-  inline_files_arg  = local.has_inline_files ? "--inline-files" : ""
+
+  # build_layer.py arguments (as a list: passed through the external data source query as JSON)
+  build_args = concat(
+    local.has_acai_modules ? concat(["--modules"], var.layer_settings.acai_modules, ["--resolve-deps"]) : ["--no-acai"],
+    local.has_pip_requirements ? ["--requirements"] : [],
+    local.has_pip_requirements && local.pip_platform != null ? ["--pip-platform", local.pip_platform] : [],
+    local.has_pip_requirements && local.pip_python_version != null ? ["--pip-python-version", local.pip_python_version] : [],
+    local.has_inline_files ? ["--inline-files"] : [],
+  )
 
   # Deterministic, input-based hash for the layer.
   # Used as `source_code_hash` so that `aws_lambda_layer_version` is only
@@ -121,27 +150,27 @@ locals {
 # ---------------------------------------------------------------------------------------------------------------------
 # ¦ BUILD LAYER SOURCE + ZIP
 # ---------------------------------------------------------------------------------------------------------------------
-resource "null_resource" "build_layer" {
-  # Rebuild when inputs change OR when the zip is missing on the current agent.
-  # The zip path uses abspath(path.root) so it resolves identically in both
-  # the provisioner (working_dir = path.module) and the resource's filename.
-  triggers = {
-    inputs_hash = local.layer_inputs_hash
-    zip_present = fileexists(local.acai_powertools_layer_zip) ? "yes" : timestamp()
-  }
+# The ZIP is built while Terraform *plans* (data sources are read during plan), so it exists
+# whenever the layer version has to be published - also when plan and apply run in separate
+# CI jobs (the terraform folder incl. .layer-build/ is handed over with the plan) and when
+# only the layer version (not its inputs) has to be recreated, e.g. on a runtime change.
+# A data source never shows up as a change: with unchanged inputs the plan stays empty
+# (`filename` is a constant relative path, `source_code_hash` is input-based, not ZIP-byte based).
+# The layer version only depends on the data source (depends_on) and does not read its
+# result: if Terraform defers the data source to apply (e.g. module-level depends_on with
+# pending changes), `filename` stays known and no replacement is planned.
+# The former null_resource.build_layer either missed the ZIP (trigger on inputs only) or
+# was replaced on every plan (timestamp() trigger).
+data "external" "build_layer" {
+  program = [local.is_windows ? "python" : "python3", "${path.module}/build_layer_external.py"]
 
-  provisioner "local-exec" {
-    interpreter = local.is_windows ? ["powershell", "-Command"] : ["/bin/sh", "-c"]
-    command = local.is_windows ? trimspace(
-      "python build_layer.py ${local.modules_arg} ${local.pip_args} ${local.inline_files_arg} --source-dir \"${local.layer_source_folder}\" --output \"${local.acai_powertools_layer_zip}\""
-      ) : trimspace(
-      "if command -v python3 >/dev/null 2>&1; then PY=python3; else PY=python; fi && \"$PY\" build_layer.py ${local.modules_arg} ${local.pip_args} ${local.inline_files_arg} --source-dir '${local.layer_source_folder}' --output '${local.acai_powertools_layer_zip}'"
-    )
-    working_dir = path.module
-    environment = {
-      PIP_REQUIREMENTS_JSON = local.pip_requirements_json
-      INLINE_FILES_JSON     = local.inline_files_json
-    }
+  query = {
+    output                = local.acai_powertools_layer_zip
+    source_dir            = local.layer_source_folder
+    inputs_hash           = local.layer_inputs_hash
+    args                  = jsonencode(local.build_args)
+    pip_requirements_json = local.pip_requirements_json
+    inline_files_json     = local.inline_files_json
   }
 }
 
@@ -154,13 +183,13 @@ resource "aws_lambda_layer_version" "acai_powertools_layer" {
   region                   = each.key == "__default__" ? null : each.key
   layer_name               = var.layer_settings.layer_name
   description              = var.layer_settings.description
-  filename                 = local.acai_powertools_layer_zip
+  filename                 = local.layer_zip_filename
   compatible_runtimes      = var.layer_settings.compatible_runtimes
   compatible_architectures = var.layer_settings.compatible_architectures
   source_code_hash         = local.layer_inputs_hash
   skip_destroy             = var.layer_settings.skip_destroy
 
-  depends_on = [null_resource.build_layer]
+  depends_on = [data.external.build_layer]
 
   lifecycle {
     create_before_destroy = true

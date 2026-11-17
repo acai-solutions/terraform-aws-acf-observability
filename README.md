@@ -34,8 +34,8 @@ This module embeds core functionality from the following ACAI Terraform modules:
 
 | Module Name | Version | Link | Local Folder | 
 |-------------|---------|------|--------------|
-| ACAI PowerTools | 1.0.9 | [GitHub](https://github.com/acai-solutions/acai-powertools) | ./modules-external/acai-powertools | 
-| ACAI Lambda | 1.6.1 | [GitHub](https://github.com/acai-solutions/terraform-aws-lambda) | ./modules-external/terraform-aws-lambda | 
+| ACAI PowerTools | 1.3.1 | [GitHub](https://github.com/acai-solutions/acai-powertools) | ./modules-external/acai-powertools | 
+| ACAI Lambda | 1.6.2 | [GitHub](https://github.com/acai-solutions/terraform-aws-lambda) | ./modules-external/terraform-aws-lambda | 
 
 
 ```mermaid
@@ -145,6 +145,7 @@ Deployed in each **source (member) account**. Creates:
 | `settings.oam.resource_types` | Resource types to share | `list(string)` | `["AWS::CloudWatch::Metric", "AWS::Logs::LogGroup", "AWS::XRay::Trace"]` | no |
 | `settings.oam.log_group_filter` | Filter expression for log group sharing | `string` | `null` | no |
 | `settings.oam.metric_filter` | Filter expression for metric sharing | `string` | `null` | no |
+| `settings.oam.link_replace_trigger` | (oam-member-terraform) Set/change to recreate the links once, e.g. to remove a filter (UpdateLink cannot drop `link_configuration`). Keep the value afterwards. | `string` | `null` | no |
 | `settings.lambda_layer` | Lambda layer configuration (set to `null` to skip) | `object` | `null` | no |
 | `settings.lambda_layer.layer_base_name` | Base name for the Lambda layer | `string` | - | conditional |
 | `settings.lambda_layer.layer_runtimes` | Runtimes for the layer (e.g. `["python3.12"]`) | `list(string)` | - | conditional |
@@ -308,7 +309,7 @@ def lambda_handler(event, context):
 * **Structured JSON output** - Every log entry is emitted as JSON with `service`, `level`, `timestamp`, `function_name`, `request_id` and custom fields.
 * **Lambda context injection** - The `@logger.inject_lambda_context()` decorator automatically enriches every log line with the Lambda request ID, function name and memory settings.
 * **Environment-driven log level** - Defaults to the `LOG_LEVEL` environment variable (or `INFO`), so you can change verbosity without code changes.
-* **ACAI Powertools modules** - The layer bundles `logging`, `aws_helper`, `python_helper` and `storage` from ACAI Powertools plus `aws-lambda-powertools`.
+* **ACAI Powertools modules** - The layer bundles the `logging` module from ACAI Powertools plus `aws-lambda-powertools`.
 
 <!-- EXAMPLES -->
 ## Examples

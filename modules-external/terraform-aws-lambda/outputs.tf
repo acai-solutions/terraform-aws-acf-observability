@@ -24,7 +24,7 @@ output "lambda" {
 
 output "trigger" {
   description = "Information about the Lambda triggers."
-  value       = var.trigger_settings != {} ? module.lambda_trigger[0] : null
+  value       = module.lambda_trigger
 }
 
 output "execution_iam_role" {
