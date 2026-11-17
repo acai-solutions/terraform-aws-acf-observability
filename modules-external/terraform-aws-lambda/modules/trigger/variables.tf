@@ -8,22 +8,21 @@
 
 
 variable "trigger_settings" {
+  description = "Trigger configuration passed in by the root module (defaults are applied there)."
   type = object({
     trigger_permissions = list(object({
       principal      = string
       source_arn     = string
       source_account = string
     }))
-    sqs = optional(object({
+    sqs = object({
       management_permissions  = list(string)
       access_policy_json_list = list(string)
-      inbound_sns_topics = optional(list(object(
-        {
-          sns_arn            = string
-          filter_policy_json = optional(string, null)
-        }
-      )), [])
-    }), null)
+      inbound_sns_topics = list(object({
+        sns_arn            = string
+        filter_policy_json = string
+      }))
+    })
     schedule_expression = string
     event_rules = list(object({
       name           = string

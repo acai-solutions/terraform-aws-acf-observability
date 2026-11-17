@@ -114,18 +114,13 @@ variable "lambda_settings" {
   }
 
   validation {
-    condition     = var.lambda_settings.package.type != "Image" || (var.lambda_settings.image_config != null && var.lambda_settings.image_config != null ? var.lambda_settings.image_config.image_uri != "" : true)
-    error_message = "When package type is 'Image', image_uri must be specified."
+    condition     = var.lambda_settings.package.type != "Image" || (var.lambda_settings.image_config != null && try(var.lambda_settings.image_config.image_uri, null) != null && try(var.lambda_settings.image_config.image_uri, "") != "")
+    error_message = "When package type is 'Image', image_config.image_uri must be specified."
   }
 
   validation {
     condition     = var.lambda_settings.error_handling == null ? true : (var.lambda_settings.error_handling.dead_letter_config == null ? true : can(regex("arn:aws(-[a-z]+)*:(sns|sqs):[a-z\\-0-9]+:\\d{12}:(.*)", var.lambda_settings.error_handling.dead_letter_config.target_arn)))
     error_message = "The dead_letter_config.target_arn must be a valid ARN of an SNS topic or SQS queue."
-  }
-
-  validation {
-    condition     = can(length(var.lambda_settings.vpc_config.security_group_ids)) && can(length(var.lambda_settings.vpc_config.subnet_ids)) ? (length(var.lambda_settings.vpc_config.security_group_ids) > 0 && length(var.lambda_settings.vpc_config.subnet_ids) > 0) : true
-    error_message = "Both security_group_ids and subnet_ids must be provided for VPC configuration."
   }
 
   validation {
@@ -250,11 +245,11 @@ variable "resource_tags" {
 }
 
 variable "module_context" {
-  description = "Infix for the parameter store entry. If provided, must end with '/'."
+  description = "Infix for the SSM parameter name. If provided, must end with '/' and may only contain alphanumeric characters, '-', '_' and '/'."
   type        = string
   default     = ""
   validation {
-    condition     = var.module_context == "" || endswith(var.module_context, "/")
-    error_message = "If module_context is provided, it must end with '/'."
+    condition     = var.module_context == "" || (endswith(var.module_context, "/") && can(regex("^[A-Za-z0-9_\\-/]+$", var.module_context)) && !can(regex("\\.\\.", var.module_context)) && !startswith(var.module_context, "/"))
+    error_message = "module_context must end with '/', must not start with '/', must not contain '..', and may only use [A-Za-z0-9_-/] characters."
   }
 }

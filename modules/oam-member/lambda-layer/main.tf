@@ -57,7 +57,10 @@ module "layer" {
 
   regions = var.regions
 
-  resource_tags = var.resource_tags
+  # Namespaced per layer and variant: the default /acai/powertools/productversion collides across variants
+  # and with other powertools consumers in the same account (e.g. acf-account-cache).
+  module_context = "observability/${var.layer_settings.layer_base_name}/${each.key}/"
+  resource_tags  = var.resource_tags
 }
 
 # ---------------------------------------------------------------------------------------------------------------------

@@ -21,7 +21,7 @@ class CloudWatchLogger(LoggerPort):
     call using the current millisecond timestamp.
     """
 
-    VERSION: str = "1.0.9"
+    VERSION: str = "1.3.1"
 
     def __init__(
         self,
