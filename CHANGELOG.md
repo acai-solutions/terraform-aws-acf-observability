@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0](https://github.com/acai-solutions/terraform-aws-acf-observability/compare/1.2.0...1.3.0) (2026-11-17)
+
+
+### Features
+
+* sync acai-powertools 1.3.1 and terraform-aws-lambda 1.6.2 ([#5](https://github.com/acai-solutions/terraform-aws-acf-observability/issues/5)) ([d61961a](https://github.com/acai-solutions/terraform-aws-acf-observability/commit/d61961ae80db1c7d8b2e69a148ae68fd97cf95be))
+
 ## [1.2.0](https://github.com/acai-solutions/terraform-aws-acf-observability/compare/1.1.0...1.2.0) (2026-05-28)
 
 
